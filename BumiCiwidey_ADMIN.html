@@ -320,7 +320,7 @@ tr:hover td{background:#f9faf8}
               <button class="btn-s" onclick="changePass()" style="white-space:nowrap">Simpan</button>
             </div>
           </div>
-          <button class="btn-p" onclick="toast('✅ Pengaturan disimpan!')">💾 Simpan Perubahan</button>
+          <button class="btn-p" onclick="saveSettings()">💾 Simpan Perubahan</button>
         </div>
       </div>
 
@@ -395,6 +395,7 @@ let orders=[
 let ongkirs=[{id:1,area:'Bandung Kota',price:10000},{id:2,area:'Cimahi',price:12000},{id:3,area:'Ciwidey',price:8000},{id:4,area:'Kopo',price:15000},{id:5,area:'Margahayu',price:12000}];
 const defaultDeliveryDates=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);const iso=d.toISOString().slice(0,10);return {id:i+1,date:iso,on:true}});
 let jadwals=JSON.parse(localStorage.getItem('bc_jadwals'))||[{id:1,nm:'Pagi',icon:'🌅',time:'06:00-09:00',on:true},{id:2,nm:'Siang',icon:'☀️',time:'11:00-13:00',on:true},{id:3,nm:'Sore',icon:'🌇',time:'15:00-17:00',on:false}];
+let adminWA=localStorage.getItem('bc_adminWA')||'6281234567890';
 let deliveryDates=JSON.parse(localStorage.getItem('bc_deliveryDates'))||defaultDeliveryDates;
 let promos=[{id:1,nm:'BUMICIWIDEY15',type:'Voucher',val:'15%',berlaku:'Pelanggan baru, min Rp50.000'},{id:2,nm:'Diskon Wortel',type:'Produk',val:'Rp 2.000',berlaku:'Wortel Premium'}];
 let adminUsers=[{id:1,nm:'Super Admin',contact:'admin@bumiciwidey.com',role:'Admin'},{id:2,nm:'Dewi Sari',contact:'08811223344',role:'Staff'}];
@@ -419,6 +420,8 @@ function doLogin(){
 }
 function doLogout(){if(confirm('Logout dari panel admin?')){document.getElementById('admLayout').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('loginPass').value='';toast('👋 Logout berhasil')}}
 function changePass(){const p=document.getElementById('newPass').value.trim();if(p.length<6){toast('❌ Password min. 6 karakter');return}adminPass=p;document.getElementById('newPass').value='';toast('✅ Password berhasil diubah')}
+function renderSettings(){document.getElementById('adminWA').value=localStorage.getItem('bc_adminWA')||'6281234567890'}
+function saveSettings(){const wa=document.getElementById('adminWA').value.trim();if(!/^62\d{8,}$/.test(wa)){toast('❌ Format nomor WA harus 628xxxxxxxxxx');return}localStorage.setItem('bc_adminWA',wa);adminWA=wa;toast('✅ Nomor WhatsApp admin disimpan')}
 
 // ===== PAGES =====
 function showPg(id,el){
@@ -429,7 +432,7 @@ function showPg(id,el){
   const T={dashboard:'📊 Dashboard',pesanan:'🧾 Manajemen Pesanan',produk:'🥬 Manajemen Produk',kategori:'🏷 Kategori',stok:'📦 Manajemen Stok',pelanggan:'👤 Data Pelanggan',ongkir:'🚚 Ongkos Kirim',promo:'🎟 Promo & Diskon',jadwal:'⏰ Jadwal Pengiriman',laporan:'📈 Laporan',setting:'⚙ Pengaturan',admins:'👥 Multi Admin'};
   document.getElementById('pgTitle').textContent=T[id]||id;
 }
-function renderAll(){renderDash();renderOrds();renderProdTbl();renderCatTbl();renderStok();renderCustTbl();renderOngkirPanel();renderPromoTbl();renderJadwal();renderDates();renderReports();renderAdminTbl()}
+function renderAll(){renderDash();renderOrds();renderProdTbl();renderCatTbl();renderStok();renderCustTbl();renderOngkirPanel();renderPromoTbl();renderJadwal();renderDates();renderReports();renderAdminTbl();renderSettings();}
 
 function saveJadwals(){localStorage.setItem('bc_jadwals',JSON.stringify(jadwals))}
 function saveDeliveryDates(){localStorage.setItem('bc_deliveryDates',JSON.stringify(deliveryDates))}
