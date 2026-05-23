@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel – Bumi Ciwidey</title>
+<link rel="shortcut icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -371,16 +373,31 @@ tr:hover td{background:#f9faf8}
   </div>
 </div>
 
-<script>
-// ===== 1. DATABASE UTAMA & SINKRONISASI LOCALSTORAGE =====
-let cats = JSON.parse(localStorage.getItem('bc_cats'));
-if (!cats || cats.length === 0) {
-  cats = ['Sayur', 'Buah', 'Paket', 'Bumbu'];
-}
+<script type="module">
+  // ===== 1. IMPORT & INISIALISASI FIREBASE CLOUD =====
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-let prods = JSON.parse(localStorage.getItem('bc_prods'));
-if (!prods || prods.length === 0) {
-  prods = [
+  // Konfigurasi Firebase Anda
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7cmAl3LpFDCNxKG_IxaAPy30POr5Brp8",
+    authDomain: "bumi-ciwidey-web.firebaseapp.com",
+    databaseURL: "https://bumi-ciwidey-web-default-rtdb.firebaseio.com",
+    projectId: "bumi-ciwidey-web",
+    storageBucket: "bumi-ciwidey-web.firebasestorage.app",
+    messagingSenderId: "690378201370",
+    appId: "1:690378201370:web:8b9b68452847f3e1c9b4a3",
+    measurementId: "G-23CGEJVVVM"
+  };
+
+  // Inisialisasi Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const dbRef = ref(db, 'tokoData');
+
+  // ===== 2. INITIAL DATABASE & FALLBACK STATES =====
+  window.cats = JSON.parse(localStorage.getItem('bc_cats')) || ['Sayur', 'Buah', 'Paket', 'Bumbu'];
+  window.prods = JSON.parse(localStorage.getItem('bc_prods')) || [
     {id:1,nm:'Bayam Organik',cat:'Sayur',price:8000,disc:null,stk:45,unit:'ikat',emoji:'🥬',feat:true,act:true,desc:'Bayam segar dipetik pagi dari kebun Ciwidey.',imgs:[]},
     {id:2,nm:'Wortel Premium',cat:'Sayur',price:12000,disc:10000,stk:30,unit:'kg',emoji:'🥕',feat:true,act:true,desc:'Wortel manis ukuran besar, cocok untuk jus dan sop.',imgs:[]},
     {id:3,nm:'Brokoli Segar',cat:'Sayur',price:18000,disc:null,stk:8,unit:'kg',emoji:'🥦',feat:false,act:true,desc:'Brokoli hijau segar dari dataran tinggi Ciwidey.',imgs:[]},
@@ -390,266 +407,314 @@ if (!prods || prods.length === 0) {
     {id:7,nm:'Cabai Merah',cat:'Bumbu',price:35000,disc:null,stk:25,unit:'kg',emoji:'🌶',feat:false,act:true,desc:'Cabai merah segar dari petani lokal Ciwidey.',imgs:[]},
     {id:8,nm:'Apel Malang',cat:'Buah',price:28000,disc:null,stk:15,unit:'kg',emoji:'🍎',feat:false,act:true,desc:'Apel segar manis masam pilihan dari Malang.',imgs:[]}
   ];
-}
-
-let orders = JSON.parse(localStorage.getItem('bc_orders'));
-if (!orders || orders.length === 0) {
-  orders = [
+  window.orders = JSON.parse(localStorage.getItem('bc_orders')) || [
     {id:'ORD-001',cust:'Siti Rahayu',wa:'08123456789',al:'Jl. Sudirman No.5',area:'Bandung Kota',items:[{nm:'Bayam Organik',qty:2,price:8000},{nm:'Wortel Premium',qty:1,price:10000}],jadwal:'Pagi 06:00-09:00',pay:'COD',status:'Menunggu',date:'2024-05-01',total:26000},
     {id:'ORD-002',cust:'Budi Santoso',wa:'08234567890',al:'Perum Griya Asri Blok C2',area:'Cimahi',items:[{nm:'Paket Sayur Sehat',qty:1,price:48000}],jadwal:'Siang 11:00-13:00',pay:'Transfer BCA',status:'Diproses',date:'2024-05-01',total:48000},
     {id:'ORD-003',cust:'Rina Dewi',wa:'08345678901',al:'Jl. Riau No.12',area:'Bandung Kota',items:[{nm:'Brokoli Segar',qty:2,price:18000},{nm:'Tomat Merah',qty:3,price:9000}],jadwal:'Sore 15:00-17:00',pay:'COD',status:'Dikirim',date:'2024-04-30',total:63000}
   ];
-}
 
+  window.ongkirs = JSON.parse(localStorage.getItem('bc_ongkirs')) || [{id:1,area:'Bandung Kota',price:10000},{id:2,area:'Cimahi',price:12000},{id:3,area:'Ciwidey',price:8000},{id:4,area:'Kopo',price:15000},{id:5,area:'Margahayu',price:12000}];
+  const defaultDeliveryDates = [...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);const iso=d.toISOString().slice(0,10);return {id:i+1,date:iso,on:true}});
+  window.jadwals = JSON.parse(localStorage.getItem('bc_jadwals')) || [
+    {id:1,nm:'Pagi',icon:'🌅',time:'06:00-09:00',on:true},
+    {id:2,nm:'Siang',icon:'☀️',time:'11:00-13:00',on:true},
+    {id:3,nm:'Sore',icon:'🌇',time:'15:00-17:00',on:false}
+  ];
+  window.adminWA = localStorage.getItem('bc_adminWA') || '6281234567890';
+  window.deliveryDates = JSON.parse(localStorage.getItem('bc_deliveryDates')) || defaultDeliveryDates;
+  window.promos = [{id:1,nm:'BUMICIWIDEY15',type:'Voucher',val:'15%',berlaku:'Pelanggan baru, min Rp50.000'},{id:2,nm:'Diskon Wortel',type:'Produk',val:'Rp 2.000',berlaku:'Wortel Premium'}];
+  window.adminUsers = [{id:1,nm:'Super Admin',contact:'admin@bumiciwidey.com',role:'Admin'},{id:2,nm:'Dewi Sari',contact:'08811223344',role:'Staff'}];
+  window.homepageBannerData = localStorage.getItem('bc_homepage_banner') || '';
 
+  const DEF_EMOJI={Sayur:['🥬','🥦','🥕','🌽','🍅','🫑','🥒','🧅'],Buah:['🍎','🍊','🍋','🍇','🍓','🥝'],Paket:['🎁','📦'],Bumbu:['🌶','🧂','🫚']};
+  const fmt=n=>'Rp '+n.toLocaleString('id-ID');
+  window.toast = function(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
 
-// ===== 2. DEKLARASI VARIABEL BAWAAN SISTEM =====
-const DEF_EMOJI={Sayur:['🥬','🥦','🥕','🌽','🍅','🫑','🥒','🧅'],Buah:['🍎','🍊','🍋','🍇','🍓','🥝'],Paket:['🎁','📦'],Bumbu:['🌶','🧂','🫚']};
-let ongkirs = JSON.parse(localStorage.getItem('bc_ongkirs')) || [{id:1,area:'Bandung Kota',price:10000},{id:2,area:'Cimahi',price:12000},{id:3,area:'Ciwidey',price:8000},{id:4,area:'Kopo',price:15000},{id:5,area:'Margahayu',price:12000}];
-const defaultDeliveryDates=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);const iso=d.toISOString().slice(0,10);return {id:i+1,date:iso,on:true}});
-let jadwals=JSON.parse(localStorage.getItem('bc_jadwals'))||[{id:1,nm:'Pagi',icon:'🌅',time:'06:00-09:00',on:true},{id:2,nm:'Siang',icon:'☀️',time:'11:00-13:00',on:true},{id:3,nm:'Sore',icon:'🌇',time:'15:00-17:00',on:false}];
-let adminWA=localStorage.getItem('bc_adminWA')||'6281234567890';
-let deliveryDates=JSON.parse(localStorage.getItem('bc_deliveryDates'))||defaultDeliveryDates;
-let promos=[{id:1,nm:'BUMICIWIDEY15',type:'Voucher',val:'15%',berlaku:'Pelanggan baru, min Rp50.000'},{id:2,nm:'Diskon Wortel',type:'Produk',val:'Rp 2.000',berlaku:'Wortel Premium'}];
-let adminUsers=[{id:1,nm:'Super Admin',contact:'admin@bumiciwidey.com',role:'Admin'},{id:2,nm:'Dewi Sari',contact:'08811223344',role:'Staff'}];
-const fmt=n=>'Rp '+n.toLocaleString('id-ID');
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+  let ordFilt='all', editId=null, pImgs=[];
 
-let ordFilt='all', editId=null, pImgs=[];
+  // ===== 3. GLOBAL REAL-TIME SYNC TO CLOUD FIREBASE =====
+  window.saveToStorage = function() {
+    localStorage.setItem('bc_prods', JSON.stringify(prods));
+    localStorage.setItem('bc_cats', JSON.stringify(cats));
+    localStorage.setItem('bc_orders', JSON.stringify(orders));
+    localStorage.setItem('bc_jadwals', JSON.stringify(jadwals));
+    localStorage.setItem('bc_adminWA', adminWA);
+    localStorage.setItem('bc_ongkirs', JSON.stringify(ongkirs));
+    localStorage.setItem('bc_deliveryDates', JSON.stringify(deliveryDates));
+    localStorage.setItem('bc_homepage_banner', homepageBannerData || '');
 
-
-// ===== 3. FITUR LOGIN PANEL =====
-let adminPass='admin123';
-function doLogin(){
-  const u=document.getElementById('loginUser').value.trim();
-  const p=document.getElementById('loginPass').value.trim();
-  if(u==='admin'&&p===adminPass){
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('admLayout').style.display='block';
-    renderAll();toast('✅ Selamat datang, Admin!');
-  } else {
-    document.getElementById('loginPass').style.borderColor='var(--red)';
-    toast('❌ Username atau password salah!');
+    // Dorong pembaharuan ke server Firebase secara online
+    set(dbRef, {
+      prods: prods,
+      cats: cats,
+      orders: orders,
+      jadwals: jadwals,
+      adminWA: adminWA,
+      ongkirs: ongkirs,
+      deliveryDates: deliveryDates,
+      homepageBanner: homepageBannerData || ''
+    }).then(() => {
+      console.log("Sinkronisasi database awan berhasil!");
+    }).catch((err) => {
+      console.error("Gagal sinkronisasi cloud:", err);
+    });
   }
-}
-function doLogout(){if(confirm('Logout dari panel admin?')){document.getElementById('admLayout').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('loginPass').value='';toast('👋 Logout berhasil')}}
-function changePass(){const p=document.getElementById('newPass').value.trim();if(p.length<6){toast('❌ Password min. 6 karakter');return}adminPass=p;document.getElementById('newPass').value='';toast('✅ Password berhasil diubah')}
-function renderSettings(){document.getElementById('adminWA').value=localStorage.getItem('bc_adminWA')||'6281234567890'}
-function saveSettings(){const wa=document.getElementById('adminWA').value.trim();if(!/^62\d{8,}$/.test(wa)){toast('❌ Format nomor WA harus 628xxxxxxxxxx');return}localStorage.setItem('bc_adminWA',wa);adminWA=wa;toast('✅ Nomor WhatsApp admin disimpan')}
 
+  // Mendengarkan perubahan data secara real-time (Misal jika pelanggan buat order baru dari Toko)
+  onValue(dbRef, (snapshot) => {
+    const data = snapshot.val();
+    if(data) {
+      console.log("Menerima pembaruan eksternal dari cloud!");
+      if(data.prods) { prods = data.prods; localStorage.setItem('bc_prods', JSON.stringify(prods)); }
+      if(data.cats) { cats = data.cats; localStorage.setItem('bc_cats', JSON.stringify(cats)); }
+      if(data.orders) { orders = data.orders; localStorage.setItem('bc_orders', JSON.stringify(orders)); }
+      if(data.jadwals) { jadwals = data.jadwals; localStorage.setItem('bc_jadwals', JSON.stringify(jadwals)); }
+      if(data.adminWA) { adminWA = data.adminWA; localStorage.setItem('bc_adminWA', adminWA); }
+      if(data.ongkirs) { ongkirs = data.ongkirs; localStorage.setItem('bc_ongkirs', JSON.stringify(ongkirs)); }
+      if(data.deliveryDates) { deliveryDates = data.deliveryDates; localStorage.setItem('bc_deliveryDates', JSON.stringify(deliveryDates)); }
+      if(data.homepageBanner) { homepageBannerData = data.homepageBanner; localStorage.setItem('bc_homepage_banner', homepageBannerData); }
+      
+      // Render ulang layar saat data diperbarui
+      if(document.getElementById('admLayout').style.display === 'block') {
+        renderAll();
+      }
+    }
+  });
 
-// ===== 4. MANAJEMEN NAVIGASI HALAMAN =====
-function showPg(id,el){
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
-  const pg=document.getElementById('pg-'+id);if(pg)pg.classList.add('active');
-  if(el)el.classList.add('active');
-  const T={dashboard:'📊 Dashboard',pesanan:'🧾 Manajemen Pesanan',produk:'🥬 Manajemen Produk',kategori:'🏷 Kategori',stok:'📦 Manajemen Stok',pelanggan:'👤 Data Pelanggan',ongkir:'🚚 Ongkos Kirim',promo:'🎟 Promo & Diskon',jadwal:'⏰ Jadwal Pengiriman',laporan:'📈 Laporan',setting:'⚙ Pengaturan',admins:'👥 Multi Admin'};
-  document.getElementById('pgTitle').textContent=T[id]||id;
-}
-function renderAll(){renderDash();renderOrds();renderProdTbl();renderCatTbl();renderStok();renderCustTbl();renderOngkirPanel();renderPromoTbl();renderJadwal();renderDates();renderReports();renderAdminTbl();renderSettings();}
-
-function saveJadwals(){localStorage.setItem('bc_jadwals',JSON.stringify(jadwals))}
-function saveDeliveryDates(){localStorage.setItem('bc_deliveryDates',JSON.stringify(deliveryDates))}
-function formatDateLabel(date){const d=new Date(date);const opt={weekday:'short',day:'numeric',month:'short'};return d.toLocaleDateString('id-ID',opt)}
-function renderDates(){document.getElementById('datesList').innerHTML=deliveryDates.length?deliveryDates.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--gr100)"><div><div style="font-weight:700;font-size:15px">${formatDateLabel(d.date)}</div><div style="font-size:13px;color:var(--gr400)">${d.date}</div></div><div style="display:flex;align-items:center;gap:10px"><button class="btn-d" style="padding:6px 10px;font-size:13px" onclick="delDeliveryDate(${d.id})">🗑 Hapus</button><span style="font-size:13px;color:${d.on?'var(--g600)':'var(--gr400)'};font-weight:600">${d.on?'Aktif':'Nonaktif'}</span><div class="toggle ${d.on?'on':''}" onclick="togDeliveryDate(${d.id})"><div class="toggle-k"></div></div></div></div>`).join(''):'<div style="padding:16px 0;color:var(--red);font-size:14px">Belum ada tanggal pengiriman. Tambahkan tanggal yang tersedia.</div>'}
-function addDeliveryDate(){const d=prompt('Tanggal pengiriman baru (YYYY-MM-DD):');if(!d)return;const valid=/^\d{4}-\d{2}-\d{2}$/.test(d);if(!valid){toast('❌ Format tanggal tidak valid');return}const parsed=new Date(d);if(Number.isNaN(parsed.getTime())){toast('❌ Tanggal tidak valid');return}if(deliveryDates.some(x=>x.date===d)){toast('⚠️ Tanggal sudah ada');return}deliveryDates.push({id:Date.now(),date:d,on:true});deliveryDates.sort((a,b)=>a.date.localeCompare(b.date));saveDeliveryDates();renderDates();toast('✅ Tanggal pengiriman ditambahkan')}
-function togDeliveryDate(id){const d=deliveryDates.find(x=>x.id===id);if(d){d.on=!d.on;saveDeliveryDates();renderDates();toast(formatDateLabel(d.date)+' '+(d.on?'aktif':'dinonaktifkan'))}}
-function delDeliveryDate(id){if(!confirm('Hapus tanggal pengiriman ini?'))return;deliveryDates=deliveryDates.filter(x=>x.id!==id);saveDeliveryDates();renderDates();toast('🗑 Tanggal pengiriman dihapus')}
-
-
-// ===== 5. SISTEM PANEL DASHBOARD =====
-function renderDash(){
-  const rev=orders.filter(o=>o.status==='Selesai').reduce((s,o)=>s+o.total,0);
-  const td=new Date().toISOString().slice(0,10);
-  document.getElementById('ds_rev').textContent=fmt(rev);
-  document.getElementById('ds_ord').textContent=orders.length;
-  document.getElementById('ds_today').textContent=orders.filter(o=>o.date===td).length;
-  document.getElementById('ds_cust').textContent=[...new Set(orders.map(o=>o.wa))].length;
-  document.getElementById('lsAlert').style.display=prods.filter(p=>p.stk>0&&p.stk<10).length?'flex':'none';
-  const days=['Sen','Sel','Rab','Kam','Jum','Sab','Min'],vals=[180000,240000,320000,280000,420000,510000,380000],mx=Math.max(...vals);
-  document.getElementById('salesChart').innerHTML=days.map((d,i)=>`<div class="cb-col"><div class="cb-bar" style="height:${Math.round(vals[i]/mx*100)}%" title="${fmt(vals[i])}"></div><div class="cb-lbl">${d}</div></div>`).join('');
-  document.getElementById('topProds').innerHTML=[{nm:'Bayam Organik',n:42},{nm:'Paket Sayur',n:35},{nm:'Wortel',n:28},{nm:'Brokoli',n:19}]
-    .map((p,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gr100)"><div style="width:26px;height:26px;background:${i===0?'var(--g600)':'var(--g100)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${i===0?'white':'var(--g700)'}">${i+1}</div><div style="flex:1;font-size:14px">${p.nm}</div><div style="font-weight:700;font-size:13px;color:var(--gr500)">${p.n}×</div></div>`).join('');
-  document.getElementById('recentOrds').innerHTML=orders.slice(0,5).map(o=>`<tr><td><strong>${o.id}</strong><br><small style="color:var(--gr400)">${o.date}</small></td><td>${o.cust}</td><td><strong>${fmt(o.total)}</strong></td><td style="font-size:13px">${o.jadwal}</td><td><span class="bs ${bsCls(o.status)}">${o.status}</span></td><td><a href="https://wa.me/${o.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬</a></td></tr>`).join('');
-}
-function bsCls(s){return s==='Menunggu'?'bs-tunggu':s==='Diproses'?'bs-proses':s==='Dikirim'?'bs-kirim':s==='Selesai'?'bs-selesai':'bs-batal'}
-
-
-// ===== 6. MANAJEMEN DATA PESANAN =====
-function renderOrds(){
-  let f=orders;if(ordFilt!=='all')f=f.filter(o=>o.status===ordFilt);
-  document.getElementById('ordTbl').innerHTML=f.length?f.map(o=>`<tr><td><strong>${o.id}</strong><br><small style="color:var(--gr400)">${o.date}</small></td><td>${o.cust}<br><small style="color:var(--gr400)">${o.wa}</small></td><td style="font-size:13px">${o.items.map(i=>i.nm+' x'+i.qty).join(', ')}</td><td><strong>${fmt(o.total)}</strong></td><td style="font-size:13px">${o.jadwal}</td><td><select onchange="updOrdSt('${o.id}',this.value)" style="border:1.5px solid var(--gr200);border-radius:6px;padding:5px 8px;font-size:13px;background:white;font-family:inherit">${['Menunggu','Diproses','Dikirim','Selesai','Dibatalkan'].map(s=>`<option ${o.status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td><td><a href="https://wa.me/${o.wa}?text=Halo+${o.cust},+pesanan+${o.id}+sedang+${o.status}+🌿" target="_blank" class="btn-ic" style="text-decoration:none">💬 WA</a></td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--gr400);padding:32px">Tidak ada pesanan</td></tr>';
-}
-function filtOrd(s,btn){ordFilt=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));if(btn)btn.classList.add('active');renderOrds()}
-function searchOrd(q){const f=orders.filter(o=>o.cust.toLowerCase().includes(q.toLowerCase())||o.id.toLowerCase().includes(q.toLowerCase()));document.getElementById('ordTbl').innerHTML=f.map(o=>`<tr><td><strong>${o.id}</strong></td><td>${o.cust}</td><td>${o.items.map(i=>i.nm).join(', ')}</td><td>${fmt(o.total)}</td><td>${o.jadwal}</td><td><span class="bs ${bsCls(o.status)}">${o.status}</span></td><td><a href="https://wa.me/${o.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬</a></td></tr>`).join('')}
-function updOrdSt(id,s){
-  const o=orders.find(x=>x.id===id);
-  if(o){
-    o.status=s;
-    renderDash();
-    toast('✅ Status: '+s);
-    saveToStorage(); // Menyimpan perubahan status ke localStorage
+  // ===== 4. FITUR LOGIN PANEL =====
+  let adminPass='admin123';
+  window.doLogin = function(){
+    const u=document.getElementById('loginUser').value.trim();
+    const p=document.getElementById('loginPass').value.trim();
+    if(u==='admin'&&p===adminPass){
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('admLayout').style.display='block';
+      renderAll();toast('✅ Selamat datang, Admin!');
+    } else {
+      document.getElementById('loginPass').style.borderColor='var(--red)';
+      toast('❌ Username atau password salah!');
+    }
   }
-}
-
-
-// ===== 7. MANAJEMEN KATALOG PRODUK =====
-function renderProdTbl(){
-  document.getElementById('prodTbl').innerHTML=prods.map(p=>{
-    const src=p.imgs&&p.imgs[0];
-    const th=src?`<img src="${src}" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:2px solid var(--g100)">`:`<div style="width:46px;height:46px;background:var(--g50);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">${p.emoji}</div>`;
-    return `<tr><td>${th}</td><td><strong>${p.nm}</strong>${p.feat?'<span style="margin-left:6px;background:var(--amberL);color:#a07010;font-size:11px;padding:2px 8px;border-radius:50px;font-weight:700">🔥 Unggulan</span>':''}</td><td>${p.cat}</td><td>${p.disc?`<small style="text-decoration:line-through;color:var(--gr400)">${fmt(p.price)}</small><br><strong style="color:var(--g600)">${fmt(p.disc)}</strong>`:fmt(p.price)}</td><td><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk}</span> ${p.unit}</td><td><span class="bs ${p.stk===0?'bs-batal':p.act?'bs-kirim':'bs-tunggu'}">${p.stk===0?'Habis':p.act?'Aktif':'Nonaktif'}</span></td><td><div class="act-row"><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button><button class="btn-d" onclick="delProd(${p.id})">🗑</button></div></td></tr>`;
-  }).join('');
-}
-function searchAdmProd(q){const f=prods.filter(p=>p.nm.toLowerCase().includes(q.toLowerCase()));document.getElementById('prodTbl').innerHTML=f.map(p=>`<tr><td style="font-size:22px">${p.emoji}</td><td>${p.nm}</td><td>${p.cat}</td><td>${fmt(p.disc||p.price)}</td><td>${p.stk} ${p.unit}</td><td><span class="bs ${p.act?'bs-kirim':'bs-tunggu'}">${p.act?'Aktif':'Nonaktif'}</span></td><td><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button></td></tr>`).join('')}
-function delProd(id){
-  if(confirm('Hapus produk ini?')){
-    prods=prods.filter(p=>p.id!==id);
-    renderProdTbl();
-    toast('🗑 Produk dihapus');
-    saveToStorage(); // Simpan penghapusan ke localStorage
-  }
-}
-
-
-// ===== 8. MANAJEMEN DATA KATEGORI =====
-function renderCatTbl(){document.getElementById('catTbl').innerHTML=cats.map(c=>`<tr><td style="font-size:26px">${DEF_EMOJI[c]?DEF_EMOJI[c][0]:'📦'}</td><td><strong>${c}</strong></td><td>${prods.filter(p=>p.cat===c).length} produk</td><td><div class="act-row"><button class="btn-ic" onclick="editCat('${c}')">✏️</button><button class="btn-d" onclick="delCat('${c}')">🗑</button></div></td></tr>`).join('')}
-function addCat(){
-  const n=prompt('Nama kategori baru:');
-  if(n&&!cats.includes(n)){
-    cats.push(n);
-    renderCatTbl();
-    toast('✅ Ditambahkan');
-    saveToStorage();
-  }
-}
-function editCat(o){
-  const n=prompt('Edit nama:',o);
-  if(n&&n!==o){
-    const i=cats.indexOf(o);
-    cats[i]=n;
-    prods.forEach(p=>{if(p.cat===o)p.cat=n});
-    renderCatTbl();
-    renderProdTbl();
-    toast('✅ Diperbarui');
-    saveToStorage();
-  }
-}
-function delCat(n){
-  if(confirm('Hapus '+n+'?')){
-    cats=cats.filter(c=>c!==n);
-    renderCatTbl();
-    toast('🗑 Dihapus');
-    saveToStorage();
-  }
-}
-
-
-// ===== 9. MANAJEMEN SISTEM STOK =====
-function renderStok(){
-  document.getElementById('stokTbl').innerHTML=prods.map(p=>`<tr style="${p.stk===0?'background:#fff5f5':p.stk<10?'background:#fffbeb':''}"><td><strong>${p.nm}</strong></td><td><div style="display:flex;align-items:center;gap:10px"><div style="width:80px;height:6px;background:var(--gr100);border-radius:3px"><div style="height:6px;background:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g500)'};border-radius:3px;width:${Math.min(100,p.stk)}%"></div></div><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk} ${p.unit}</span></div></td><td><span class="bs ${p.stk===0?'bs-batal':p.stk<10?'bs-tunggu':'bs-kirim'}">${p.stk===0?'Habis':p.stk<10?'Menipis':'OK'}</span></td><td><div style="display:flex;gap:6px;align-items:center"><input type="number" value="${p.stk}" min="0" id="stk_${p.id}" style="width:72px;padding:7px;border:1.5px solid var(--gr200);border-radius:6px;font-size:13px;font-family:inherit"><button class="btn-ic" onclick="updStk(${p.id})">💾</button></div></td><td><button class="btn-ic" onclick="toast('📋 Log stok ${p.nm} dicatat')">📋 Log</button></td></tr>`).join('');
-}
-function updStk(id){
-  const v=parseInt(document.getElementById('stk_'+id).value)||0;
-  const p=prods.find(x=>x.id===id);
-  if(p){
-    p.stk=v;
-    renderStok();
-    toast('✅ Stok: '+v+' '+p.unit);
-    saveToStorage(); // Simpan pembaruan instan stok ke localStorage
-  }
-}
-
-
-// ===== 10. MANAJEMEN LOGISTIK & ONGKIR =====
-function renderCustTbl(){
-  const cm=orders.reduce((a,o)=>{const k=o.wa;if(!a[k])a[k]={nm:o.cust,wa:o.wa,area:o.area,n:0,tot:0};a[k].n++;a[k].tot+=o.total;return a},{});
-  document.getElementById('custTbl').innerHTML=Object.values(cm).map(c=>`<tr><td><strong>${c.nm}</strong></td><td><a href="https://wa.me/${c.wa}" style="color:var(--g600)">${c.wa}</a></td><td>${c.area}</td><td>${c.n} order</td><td><strong>${fmt(c.tot)}</strong></td><td>${c.n>=3?'<span class="bs bs-selesai">⭐ Tetap</span>':'<span class="bs bs-tunggu">Baru</span>'}</td><td><a href="https://wa.me/${c.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬 WA</a></td></tr>`).join('');
-}
-
-function renderOngkirPanel(){document.getElementById('ongkirPanel').innerHTML='<div class="panel-title">Daftar Area Pengiriman</div>'+ongkirs.map(o=>`<div class="ong-row"><span style="font-weight:700;font-size:15px">${o.area}</span><div style="display:flex;align-items:center;gap:8px"><input type="number" value="${o.price}" id="ok_${o.id}" style="width:100px;padding:7px;border:1.5px solid var(--gr200);border-radius:6px;font-size:14px;font-family:inherit"><button class="btn-ic" onclick="svOngkir(${o.id})">💾</button><button class="btn-d" onclick="dlOngkir(${o.id})">🗑</button></div></div>`).join('')}
-function svOngkir(id){const o=ongkirs.find(x=>x.id===id);if(o){o.price=parseInt(document.getElementById('ok_'+id).value)||0;saveToStorage();toast('✅ Ongkir diperbarui & sync ke toko')}}
-function addOngkir(){const a=prompt('Nama area:');if(a){const p=parseInt(prompt('Ongkir (Rp):')||'0');ongkirs.push({id:Date.now(),area:a,price:p});saveToStorage();renderOngkirPanel();toast('✅ Area ditambahkan & sync ke toko')}}
-function dlOngkir(id){ongkirs=ongkirs.filter(o=>o.id!==id);saveToStorage();renderOngkirPanel();toast('🗑 Dihapus & sync')}
-
-
-// ===== 11. STRUKTUR FUNGSIONAL PROMO & DISKON =====
-function renderPromoTbl(){document.getElementById('promoTbl').innerHTML=promos.map(p=>`<tr><td><strong>${p.nm}</strong></td><td>${p.type}</td><td><strong style="color:var(--g600)">${p.val}</strong></td><td style="font-size:13px">${p.berlaku}</td><td><button class="btn-d" onclick="dlPromo(${p.id})">🗑</button></td></tr>`).join('')}
-function addPromo(){const n=prompt('Kode/nama promo:');if(n){promos.push({id:Date.now(),nm:n,type:'Voucher',val:'10%',berlaku:'Semua'});renderPromoTbl();toast('✅ Ditambahkan')}}
-function dlPromo(id){promos=promos.filter(p=>p.id!==id);renderPromoTbl();toast('🗑 Dihapus')}
-
-
-// ===== 12. FITUR JADWAL PENINGKATAN =====
-function renderJadwal(){document.getElementById('jadwalList').innerHTML=jadwals.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--gr100)"><div><div style="font-weight:700;font-size:15px">${s.icon} Pengiriman ${s.nm}</div><div style="font-size:13px;color:var(--gr400)">${s.time}</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;color:${s.on?'var(--g600)':'var(--gr400)'};font-weight:600">${s.on?'Aktif':'Nonaktif'}</span><div class="toggle ${s.on?'on':''}" onclick="togJadwal(${s.id})"><div class="toggle-k"></div></div></div></div>`).join('')}
-function togJadwal(id){const s=jadwals.find(x=>x.id===id);if(s){s.on=!s.on;saveJadwals();saveToStorage();renderJadwal();toast(s.nm+' '+(s.on?'diaktifkan':'dinonaktifkan'))}}
-
-
-// ===== 13. LAPORAN & EXCEL FORMATER =====
-function renderReports(){const done=orders.filter(o=>o.status==='Selesai'),rev=done.reduce((s,o)=>s+o.total,0),items=orders.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);document.getElementById('rpt_rev').textContent=fmt(rev);document.getElementById('rpt_done').textContent=done.length;document.getElementById('rpt_avg').textContent=done.length?fmt(Math.round(rev/done.length)):fmt(0);document.getElementById('rpt_items').textContent=items}
-
-
-// ===== 14. SISTEM MANAGEMENT MULTI ADMIN =====
-function renderAdminTbl(){document.getElementById('adminTbl').innerHTML=adminUsers.map(u=>`<tr><td><strong>${u.nm}</strong></td><td>${u.contact}</td><td><span class="bs ${u.role==='Admin'?'bs-kirim':'bs-tunggu'}">${u.role}</span></td><td>${u.id===1?'—':`<button class="btn-d" onclick="delAdmin(${u.id})">🗑</button>`}</td></tr>`).join('')}
-function addAdminUser(){const n=prompt('Nama admin:');if(n){const c=prompt('Email/WA:');if(c){adminUsers.push({id:Date.now(),nm:n,contact:c,role:'Staff'});renderAdminTbl();toast('✅ Admin ditambahkan')}}}
-function delAdmin(id){adminUsers=adminUsers.filter(u=>u.id!==id);renderAdminTbl();toast('🗑 Admin dihapus')}
-
-
-// ===== 15. LOGIKA FORM INPUT PRODUK (MODAL) =====
-function openPF(id){
-  editId=id;pImgs=[];
-  document.getElementById('pfTitle').textContent=id?'✏️ Edit Produk':'➕ Tambah Produk Baru';
-  const cs=document.getElementById('pf_cat');cs.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  if(id){const p=prods.find(x=>x.id===id);document.getElementById('pf_nm').value=p.nm;document.getElementById('pf_price').value=p.price;document.getElementById('pf_disc').value=p.disc||'';document.getElementById('pf_stk').value=p.stk;document.getElementById('pf_unit').value=p.unit;document.getElementById('pf_desc').value=p.desc||'';cs.value=p.cat;p.feat?document.getElementById('tog_feat').classList.add('on'):document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle'+(p.act?' on':'');pImgs=p.imgs?[...p.imgs]:[];}
-  else{['pf_nm','pf_disc','pf_desc'].forEach(i=>document.getElementById(i).value='');document.getElementById('pf_price').value='';document.getElementById('pf_stk').value='';document.getElementById('pf_unit').value='ikat';document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle on';}
-  renderPImgPrev();document.getElementById('pfModal').classList.add('open');
-}
-function closePF(){document.getElementById('pfModal').classList.remove('open');pImgs=[]}
-function handleProdImgs(inp){Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{pImgs.push(e.target.result);renderPImgPrev()};r.readAsDataURL(f)});inp.value=''}
-function renderPImgPrev(){document.getElementById('prodImgPrev').innerHTML=pImgs.map((s,i)=>`<div class="img-pw"><img src="${s}" alt="foto"><button class="img-rm" onclick="pImgs.splice(${i},1);renderPImgPrev();toast('Foto dihapus')">✕</button></div>`).join('')}
-
-function saveProd(){
-  const nm=document.getElementById('pf_nm').value.trim(),price=parseInt(document.getElementById('pf_price').value)||0;
-  if(!nm||!price){toast('⚠️ Nama & harga wajib!');return}
-  const disc=parseInt(document.getElementById('pf_disc').value)||null,stk=parseInt(document.getElementById('pf_stk').value)||0,unit=document.getElementById('pf_unit').value||'ikat',cat=document.getElementById('pf_cat').value,desc=document.getElementById('pf_desc').value.trim(),feat=document.getElementById('tog_feat').classList.contains('on'),act=document.getElementById('tog_act').classList.contains('on'),emoji=(DEF_EMOJI[cat]||['📦'])[0];
+  window.doLogout = function(){if(confirm('Logout dari panel admin?')){document.getElementById('admLayout').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('loginPass').value='';toast('👋 Logout berhasil')}}
+  window.changePass = function(){const p=document.getElementById('newPass').value.trim();if(p.length<6){toast('❌ Password min. 6 karakter');return}adminPass=p;document.getElementById('newPass').value='';toast('✅ Password berhasil diubah')}
   
-  if(editId){const p=prods.find(x=>x.id===editId);Object.assign(p,{nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk diperbarui!')}
-  else{prods.push({id:Date.now(),nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk ditambahkan!')}
+  window.renderSettings = function(){
+    document.getElementById('adminWA').value = adminWA;
+    if(homepageBannerData) {
+      document.getElementById('bannerPrev').innerHTML = `<img src="${homepageBannerData}" style="max-width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid var(--g200)">`;
+    } else {
+      document.getElementById('bannerPrev').innerHTML = `<p style="color:#999; font-size:13px;">Belum ada banner aktif</p>`;
+    }
+  }
+
+  window.saveSettings = function(){
+    const wa = document.getElementById('adminWA').value.trim();
+    if(!/^62\d{8,}$/.test(wa)){
+      toast('❌ Format nomor WA harus 628xxxxxxxxxx');
+      return;
+    }
+    adminWA = wa;
+
+    const imgPreview = document.querySelector('#bannerPrev img');
+    if(imgPreview) {
+      homepageBannerData = imgPreview.src;
+    }
+    
+    saveToStorage();
+    toast('✅ Semua pengaturan & banner disimpan!');
+  }
+
+  // ===== 5. MANAJEMEN NAVIGASI HALAMAN =====
+  window.showPg = function(id,el){
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
+    const pg=document.getElementById('pg-'+id);if(pg)pg.classList.add('active');
+    if(el)el.classList.add('active');
+    const T={dashboard:'📊 Dashboard',pesanan:'🧾 Manajemen Pesanan',produk:'🥬 Manajemen Produk',kategori:'🏷 Kategori',stok:'📦 Manajemen Stok',pelanggan:'👤 Data Pelanggan',ongkir:'🚚 Ongkos Kirim',promo:'🎟 Promo & Diskon',jadwal:'⏰ Jadwal Pengiriman',laporan:'📈 Laporan',setting:'⚙ Pengaturan',admins:'👥 Multi Admin'};
+    document.getElementById('pgTitle').textContent=T[id]||id;
+  }
   
-  closePF();renderProdTbl();renderStok();
-  saveToStorage(); // Menandai penyimpanan ke memori lokal setelah tambah/edit produk berhasil dilakukan
-}
+  window.renderAll = function(){renderDash();renderOrds();renderProdTbl();renderCatTbl();renderStok();renderCustTbl();renderOngkirPanel();renderPromoTbl();renderJadwal();renderDates();renderReports();renderAdminTbl();renderSettings();}
 
-function togSw(el){el.classList.toggle('on')}
-function exportData(){toast('📥 Export berhasil!')}
-function prevBanner(inp){if(inp.files&&inp.files[0]){const r=new FileReader();r.onload=e=>{
-    localStorage.setItem('bc_homepage_banner', e.target.result);document.getElementById('bannerPrev').innerHTML=`<img src="${e.target.result}" style="max-width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid var(--g200)">`;toast('🖼️ Banner diupload!')};r.readAsDataURL(inp.files[0])}}
+  function saveJadwals(){saveToStorage()}
+  function saveDeliveryDates(){saveToStorage()}
+  function formatDateLabel(date){const d=new Date(date);const opt={weekday:'short',day:'numeric',month:'short'};return d.toLocaleDateString('id-ID',opt)}
+  
+  window.renderDates = function(){document.getElementById('datesList').innerHTML=deliveryDates.length?deliveryDates.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--gr100)"><div><div style="font-weight:700;font-size:15px">${formatDateLabel(d.date)}</div><div style="font-size:13px;color:var(--gr400)">${d.date}</div></div><div style="display:flex;align-items:center;gap:10px"><button class="btn-d" style="padding:6px 10px;font-size:13px" onclick="delDeliveryDate(${d.id})">🗑 Hapus</button><span style="font-size:13px;color:${d.on?'var(--g600)':'var(--gr400)'};font-weight:600">${d.on?'Aktif':'Nonaktif'}</span><div class="toggle ${d.on?'on':''}" onclick="togDeliveryDate(${d.id})"><div class="toggle-k"></div></div></div></div>`).join(''):'<div style="padding:16px 0;color:var(--red);font-size:14px">Belum ada tanggal pengiriman. Tambahkan tanggal yang tersedia.</div>'}
+  window.addDeliveryDate = function(){const d=prompt('Tanggal pengiriman baru (YYYY-MM-DD):');if(!d)return;const valid=/^\d{4}-\d{2}-\d{2}$/.test(d);if(!valid){toast('❌ Format tanggal tidak valid');return}const parsed=new Date(d);if(Number.isNaN(parsed.getTime())){toast('❌ Tanggal tidak valid');return}if(deliveryDates.some(x=>x.date===d)){toast('⚠️ Tanggal sudah ada');return}deliveryDates.push({id:Date.now(),date:d,on:true});deliveryDates.sort((a,b)=>a.date.localeCompare(b.date));saveDeliveryDates();renderDates();toast('✅ Tanggal pengiriman ditambahkan')}
+  window.togDeliveryDate = function(id){const d=deliveryDates.find(x=>x.id===id);if(d){d.on=!d.on;saveDeliveryDates();renderDates();toast(formatDateLabel(d.date)+' '+(d.on?'aktif':'dinonaktifkan'))}}
+  window.delDeliveryDate = function(id){if(!confirm('Hapus tanggal pengiriman ini?'))return;deliveryDates=deliveryDates.filter(x=>x.id!==id);saveDeliveryDates();renderDates();toast('🗑 Tanggal pengiriman dihapus')}
 
+  // ===== 6. SISTEM PANEL DASHBOARD =====
+  window.renderDash = function(){
+    const rev=orders.filter(o=>o.status==='Selesai').reduce((s,o)=>s+o.total,0);
+    const td=new Date().toISOString().slice(0,10);
+    document.getElementById('ds_rev').textContent=fmt(rev);
+    document.getElementById('ds_ord').textContent=orders.length;
+    document.getElementById('ds_today').textContent=orders.filter(o=>o.date===td).length;
+    document.getElementById('ds_cust').textContent=[...new Set(orders.map(o=>o.wa))].length;
+    document.getElementById('lsAlert').style.display=prods.filter(p=>p.stk>0&&p.stk<10).length?'flex':'none';
+    const days=['Sen','Sel','Rab','Kam','Jum','Sab','Min'],vals=[180000,240000,320000,280000,420000,510000,380000],mx=Math.max(...vals);
+    document.getElementById('salesChart').innerHTML=days.map((d,i)=>`<div class="cb-col"><div class="cb-bar" style="height:${Math.round(vals[i]/mx*100)}%" title="${fmt(vals[i])}"></div><div class="cb-lbl">${d}</div></div>`).join('');
+    document.getElementById('topProds').innerHTML=[{nm:'Bayam Organik',n:42},{nm:'Paket Sayur',n:35},{nm:'Wortel',n:28},{nm:'Brokoli',n:19}]
+      .map((p,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gr100)"><div style="width:26px;height:26px;background:${i===0?'var(--g600)':'var(--g100)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${i===0?'white':'var(--g700)'}">${i+1}</div><div style="flex:1;font-size:14px">${p.nm}</div><div style="font-weight:700;font-size:13px;color:var(--gr500)">${p.n}×</div></div>`).join('');
+    document.getElementById('recentOrds').innerHTML=orders.slice(0,5).map(o=>`<tr><td><strong>${o.id}</strong><br><small style="color:var(--gr400)">${o.date}</small></td><td>${o.cust}</td><td><strong>${fmt(o.total)}</strong></td><td style="font-size:13px">${o.jadwal}</td><td><span class="bs ${bsCls(o.status)}">${o.status}</span></td><td><a href="https://wa.me/${o.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬</a></td></tr>`).join('');
+  }
+  function bsCls(s){return s==='Menunggu'?'bs-tunggu':s==='Diproses'?'bs-proses':s==='Dikirim'?'bs-kirim':s==='Selesai'?'bs-selesai':'bs-batal'}
 
-function saveToStorage() {
-  localStorage.setItem('bc_cats',            JSON.stringify(cats));
-  localStorage.setItem('bc_prods',           JSON.stringify(prods));
-  localStorage.setItem('bc_orders',          JSON.stringify(orders));
-  localStorage.setItem('bc_ongkirs',         JSON.stringify(ongkirs));
-  localStorage.setItem('bc_jadwals',         JSON.stringify(jadwals));
-  localStorage.setItem('bc_deliveryDates',   JSON.stringify(deliveryDates || defaultDeliveryDates));
-  if (typeof adminWA !== 'undefined' && adminWA) localStorage.setItem('bc_adminWA', adminWA);
-}
-
-// ===== AUTO-SYNC: Reload admin saat toko simpan order baru =====
-window.addEventListener('storage', function(e) {
-  if (e.key === 'bc_orders') {
-    orders = JSON.parse(e.newValue) || orders;
-    if (document.getElementById('pg-dashboard') && 
-        document.getElementById('pg-dashboard').classList.contains('active')) {
+  // ===== 7. MANAJEMEN DATA PESANAN =====
+  window.renderOrds = function(){
+    let f=orders;if(ordFilt!=='all')f=f.filter(o=>o.status===ordFilt);
+    document.getElementById('ordTbl').innerHTML=f.length?f.map(o=>`<tr><td><strong>${o.id}</strong><br><small style="color:var(--gr400)">${o.date}</small></td><td>${o.cust}<br><small style="color:var(--gr400)">${o.wa}</small></td><td style="font-size:13px">${o.items.map(i=>i.nm+' x'+i.qty).join(', ')}</td><td><strong>${fmt(o.total)}</strong></td><td style="font-size:13px">${o.jadwal}</td><td><select onchange="updOrdSt('${o.id}',this.value)" style="border:1.5px solid var(--gr200);border-radius:6px;padding:5px 8px;font-size:13px;background:white;font-family:inherit">${['Menunggu','Diproses','Dikirim','Selesai','Dibatalkan'].map(s=>`<option ${o.status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td><td><a href="https://wa.me/${o.wa}?text=Halo+${o.cust},+pesanan+${o.id}+sedang+${o.status}+🌿" target="_blank" class="btn-ic" style="text-decoration:none">💬 WA</a></td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--gr400);padding:32px">Tidak ada pesanan</td></tr>';
+  }
+  window.filtOrd = function(s,btn){ordFilt=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));if(btn)btn.classList.add('active');renderOrds()}
+  window.searchOrd = function(q){const f=orders.filter(o=>o.cust.toLowerCase().includes(q.toLowerCase())||o.id.toLowerCase().includes(q.toLowerCase()));document.getElementById('ordTbl').innerHTML=f.map(o=>`<tr><td><strong>${o.id}</strong></td><td>${o.cust}</td><td>${o.items.map(i=>i.nm).join(', ')}</td><td>${fmt(o.total)}</td><td>${o.jadwal}</td><td><span class="bs ${bsCls(o.status)}">${o.status}</span></td><td><a href="https://wa.me/${o.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬</a></td></tr>`).join('')}
+  window.updOrdSt = function(id,s){
+    const o=orders.find(x=>x.id===id);
+    if(o){
+      o.status=s;
       renderDash();
-    }
-    if (document.getElementById('pg-pesanan') && 
-        document.getElementById('pg-pesanan').classList.contains('active')) {
-      renderOrds();
+      toast('✅ Status: '+s);
+      saveToStorage();
     }
   }
-});
+
+  // ===== 8. MANAJEMEN KATALOG PRODUK =====
+  window.renderProdTbl = function(){
+    document.getElementById('prodTbl').innerHTML=prods.map(p=>{
+      const src=p.imgs&&p.imgs[0];
+      const th=src?`<img src="${src}" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:2px solid var(--g100)">`:`<div style="width:46px;height:46px;background:var(--g50);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">${p.emoji}</div>`;
+      return `<tr><td>${th}</td><td><strong>${p.nm}</strong>${p.feat?'<span style="margin-left:6px;background:var(--amberL);color:#a07010;font-size:11px;padding:2px 8px;border-radius:50px;font-weight:700">🔥 Unggulan</span>':''}</td><td>${p.cat}</td><td>${p.disc?`<small style="text-decoration:line-through;color:var(--gr400)">${fmt(p.price)}</small><br><strong style="color:var(--g600)">${fmt(p.disc)}</strong>`:fmt(p.price)}</td><td><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk}</span> ${p.unit}</td><td><span class="bs ${p.stk===0?'bs-batal':p.act?'bs-kirim':'bs-tunggu'}">${p.stk===0?'Habis':p.act?'Aktif':'Nonaktif'}</span></td><td><div class="act-row"><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button><button class="btn-d" onclick="delProd(${p.id})">🗑</button></div></td></tr>`;
+    }).join('');
+  }
+  window.searchAdmProd = function(q){const f=prods.filter(p=>p.nm.toLowerCase().includes(q.toLowerCase()));document.getElementById('prodTbl').innerHTML=f.map(p=>`<tr><td style="font-size:22px">${p.emoji}</td><td>${p.nm}</td><td>${p.cat}</td><td>${fmt(p.disc||p.price)}</td><td>${p.stk} ${p.unit}</td><td><span class="bs ${p.act?'bs-kirim':'bs-tunggu'}">${p.act?'Aktif':'Nonaktif'}</span></td><td><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button></td></tr>`).join('')}
+  window.delProd = function(id){
+    if(confirm('Hapus produk ini?')){
+      prods=prods.filter(p=>p.id!==id);
+      renderProdTbl();
+      toast('🗑 Produk dihapus');
+      saveToStorage();
+    }
+  }
+
+  // ===== 9. MANAJEMEN DATA KATEGORI =====
+  window.renderCatTbl = function(){document.getElementById('catTbl').innerHTML=cats.map(c=>`<tr><td style="font-size:26px">${DEF_EMOJI[c]?DEF_EMOJI[c][0]:'📦'}</td><td><strong>${c}</strong></td><td>${prods.filter(p=>p.cat===c).length} produk</td><td><div class="act-row"><button class="btn-ic" onclick="editCat('${c}')">✏️</button><button class="btn-d" onclick="delCat('${c}')">🗑</button></div></td></tr>`).join('')}
+  window.addCat = function(){
+    const n=prompt('Nama kategori baru:');
+    if(n&&!cats.includes(n)){
+      cats.push(n);
+      renderCatTbl();
+      toast('✅ Ditambahkan');
+      saveToStorage();
+    }
+  }
+  window.editCat = function(o){
+    const n=prompt('Edit nama:',o);
+    if(n&&n!==o){
+      const i=cats.indexOf(o);
+      cats[i]=n;
+      prods.forEach(p=>{if(p.cat===o)p.cat=n});
+      renderCatTbl();
+      renderProdTbl();
+      toast('✅ Diperbarui');
+      saveToStorage();
+    }
+  }
+  window.delCat = function(n){
+    if(confirm('Hapus '+n+'?')){
+      cats=cats.filter(c=>c!==n);
+      renderCatTbl();
+      toast('🗑 Dihapus');
+      saveToStorage();
+    }
+  }
+
+  // ===== 10. MANAJEMEN SISTEM STOK =====
+  window.renderStok = function(){
+    document.getElementById('stokTbl').innerHTML=prods.map(p=>`<tr style="${p.stk===0?'background:#fff5f5':p.stk<10?'background:#fffbeb':''}"><td><strong>${p.nm}</strong></td><td><div style="display:flex;align-items:center;gap:10px"><div style="width:80px;height:6px;background:var(--gr100);border-radius:3px"><div style="height:6px;background:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g500)'};border-radius:3px;width:${Math.min(100,p.stk)}%"></div></div><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk} ${p.unit}</span></div></td><td><span class="bs ${p.stk===0?'bs-batal':p.stk<10?'bs-tunggu':'bs-kirim'}">${p.stk===0?'Habis':p.stk<10?'Menipis':'OK'}</span></td><td><div style="display:flex;gap:6px;align-items:center"><input type="number" value="${p.stk}" min="0" id="stk_${p.id}" style="width:72px;padding:7px;border:1.5px solid var(--gr200);border-radius:6px;font-size:13px;font-family:inherit"><button class="btn-ic" onclick="updStk(${p.id})">💾</button></div></td><td><button class="btn-ic" onclick="toast('📋 Log stok ${p.nm} dicatat')">📋 Log</button></td></tr>`).join('');
+  }
+  window.updStk = function(id){
+    const v=parseInt(document.getElementById('stk_'+id).value)||0;
+    const p=prods.find(x=>x.id===id);
+    if(p){
+      p.stk=v;
+      renderStok();
+      toast('✅ Stok: '+v+' '+p.unit);
+      saveToStorage();
+    }
+  }
+
+  // ===== 11. MANAJEMEN LOGISTIK & ONGKIR =====
+  window.renderCustTbl = function(){
+    const cm=orders.reduce((a,o)=>{const k=o.wa;if(!a[k])a[k]={nm:o.cust,wa:o.wa,area:o.area,n:0,tot:0};a[k].n++;a[k].tot+=o.total;return a},{});
+    document.getElementById('custTbl').innerHTML=Object.values(cm).map(c=>`<tr><td><strong>${c.nm}</strong></td><td><a href="https://wa.me/${c.wa}" style="color:var(--g600)">${c.wa}</a></td><td>${c.area}</td><td>${c.n} order</td><td><strong>${fmt(c.tot)}</strong></td><td>${c.n>=3?'<span class="bs bs-selesai">⭐ Tetap</span>':'<span class="bs bs-tunggu">Baru</span>'}</td><td><a href="https://wa.me/${c.wa}" target="_blank" class="btn-ic" style="text-decoration:none">💬 WA</a></td></tr>`).join('');
+  }
+
+  window.renderOngkirPanel = function(){document.getElementById('ongkirPanel').innerHTML='<div class="panel-title">Daftar Area Pengiriman</div>'+ongkirs.map(o=>`<div class="ong-row"><span style="font-weight:700;font-size:15px">${o.area}</span><div style="display:flex;align-items:center;gap:8px"><input type="number" value="${o.price}" id="ok_${o.id}" style="width:100px;padding:7px;border:1.5px solid var(--gr200);border-radius:6px;font-size:14px;font-family:inherit"><button class="btn-ic" onclick="svOngkir(${o.id})">💾</button><button class="btn-d" onclick="dlOngkir(${o.id})">🗑</button></div></div>`).join('')}
+  window.svOngkir = function(id){const o=ongkirs.find(x=>x.id===id);if(o){o.price=parseInt(document.getElementById('ok_'+id).value)||0;saveToStorage();toast('✅ Ongkir diperbarui')}}
+  window.addOngkir = function(){const a=prompt('Nama area:');if(a){const p=parseInt(prompt('Ongkir (Rp):')||'0');ongkirs.push({id:Date.now(),area:a,price:p});renderOngkirPanel();saveToStorage();toast('✅ Area ditambahkan')}}
+  window.dlOngkir = function(id){ongkirs=ongkirs.filter(o=>o.id!==id);renderOngkirPanel();saveToStorage();toast('🗑 Dihapus')}
+
+  // ===== 12. STRUKTUR FUNGSIONAL PROMO & DISKON =====
+  window.renderPromoTbl = function(){document.getElementById('promoTbl').innerHTML=promos.map(p=>`<tr><td><strong>${p.nm}</strong></td><td>${p.type}</td><td><strong style="color:var(--g600)">${p.val}</strong></td><td style="font-size:13px">${p.berlaku}</td><td><button class="btn-d" onclick="dlPromo(${p.id})">🗑</button></td></tr>`).join('')}
+  window.addPromo = function(){const n=prompt('Kode/nama promo:');if(n){promos.push({id:Date.now(),nm:n,type:'Voucher',val:'10%',berlaku:'Semua'});renderPromoTbl();toast('✅ Ditambahkan')}}
+  window.dlPromo = function(id){promos=promos.filter(p=>p.id!==id);renderPromoTbl();toast('🗑 Dihapus')}
+
+  // ===== 13. FITUR JADWAL PENINGKATAN =====
+  window.renderJadwal = function(){document.getElementById('jadwalList').innerHTML=jadwals.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--gr100)"><div><div style="font-weight:700;font-size:15px">${s.icon} Pengiriman ${s.nm}</div><div style="font-size:13px;color:var(--gr400)">${s.time}</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;color:${s.on?'var(--g600)':'var(--gr400)'};font-weight:600">${s.on?'Aktif':'Nonaktif'}</span><div class="toggle ${s.on?'on':''}" onclick="togJadwal(${s.id})"><div class="toggle-k"></div></div></div></div>`).join('')}
+  window.togJadwal = function(id){const s=jadwals.find(x=>x.id===id);if(s){s.on=!s.on;saveJadwals();renderJadwal();toast(s.nm+' '+(s.on?'diaktifkan':'dinonaktifkan'))}}
+
+  // ===== 14. LAPORAN & EXCEL FORMATER =====
+  window.renderReports = function(){const done=orders.filter(o=>o.status==='Selesai'),rev=done.reduce((s,o)=>s+o.total,0),items=orders.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);document.getElementById('rpt_rev').textContent=fmt(rev);document.getElementById('rpt_done').textContent=done.length;document.getElementById('rpt_avg').textContent=done.length?fmt(Math.round(rev/done.length)):fmt(0);document.getElementById('rpt_items').textContent=items}
+
+  // ===== 15. SISTEM MANAGEMENT MULTI ADMIN =====
+  window.renderAdminTbl = function(){document.getElementById('adminTbl').innerHTML=adminUsers.map(u=>`<tr><td><strong>${u.nm}</strong></td><td>${u.contact}</td><td><span class="bs ${u.role==='Admin'?'bs-kirim':'bs-tunggu'}">${u.role}</span></td><td>${u.id===1?'—':`<button class="btn-d" onclick="delAdmin(${u.id})">🗑</button>`}</td></tr>`).join('')}
+  window.addAdminUser = function(){const n=prompt('Nama admin:');if(n){const c=prompt('Email/WA:');if(c){adminUsers.push({id:Date.now(),nm:n,contact:c,role:'Staff'});renderAdminTbl();toast('✅ Admin ditambahkan')}}}
+  window.delAdmin = function(id){adminUsers=adminUsers.filter(u=>u.id!==id);renderAdminTbl();toast('🗑 Admin dihapus')}
+
+  // ===== 16. LOGIKA FORM INPUT PRODUK (MODAL) =====
+  window.openPF = function(id){
+    editId=id;pImgs=[];
+    document.getElementById('pfTitle').textContent=id?'✏️ Edit Produk':'➕ Tambah Produk Baru';
+    const cs=document.getElementById('pf_cat');cs.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(id){const p=prods.find(x=>x.id===id);document.getElementById('pf_nm').value=p.nm;document.getElementById('pf_price').value=p.price;document.getElementById('pf_disc').value=p.disc||'';document.getElementById('pf_stk').value=p.stk;document.getElementById('pf_unit').value=p.unit;document.getElementById('pf_desc').value=p.desc||'';cs.value=p.cat;p.feat?document.getElementById('tog_feat').classList.add('on'):document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle'+(p.act?' on':'');pImgs=p.imgs?[...p.imgs]:[];}
+    else{['pf_nm','pf_disc','pf_desc'].forEach(i=>document.getElementById(i).value='');document.getElementById('pf_price').value='';document.getElementById('pf_stk').value='';document.getElementById('pf_unit').value='ikat';document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle on';}
+    renderPImgPrev();document.getElementById('pfModal').classList.add('open');
+  }
+  window.closePF = function(){document.getElementById('pfModal').classList.remove('open');pImgs=[]}
+  
+  window.handleProdImgs = function(inp){Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{pImgs.push(e.target.result);renderPImgPrev()};r.readAsDataURL(f)});inp.value=''}
+  window.renderPImgPrev = function(){document.getElementById('prodImgPrev').innerHTML=pImgs.map((s,i)=>`<div class="img-pw"><img src="${s}" alt="foto"><button class="img-rm" onclick="pImgs.splice(${i},1);renderPImgPrev();toast('Foto dihapus')">✕</button></div>`).join('')}
+
+  window.saveProd = function(){
+    const nm=document.getElementById('pf_nm').value.trim(),price=parseInt(document.getElementById('pf_price').value)||0;
+    if(!nm||!price){toast('⚠️ Nama & harga wajib!');return}
+    const disc=parseInt(document.getElementById('pf_disc').value)||null,stk=parseInt(document.getElementById('pf_stk').value)||0,unit=document.getElementById('pf_unit').value||'ikat',cat=document.getElementById('pf_cat').value,desc=document.getElementById('pf_desc').value.trim(),feat=document.getElementById('tog_feat').classList.contains('on'),act=document.getElementById('tog_act').classList.contains('on'),emoji=(DEF_EMOJI[cat]||['📦'])[0];
+    
+    if(editId){const p=prods.find(x=>x.id===editId);Object.assign(p,{nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk diperbarui!')}
+    else{prods.push({id:Date.now(),nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk ditambahkan!')}
+    
+    closePF();
+    saveToStorage();
+  }
+
+  window.togSw = function(el){el.classList.toggle('on')}
+  window.exportData = function(){toast('📥 Export berhasil!')}
+  
+  window.prevBanner = function(inp){
+    if(inp.files && inp.files[0]){
+      const r = new FileReader();
+      r.onload = e => {
+        homepageBannerData = e.target.result;
+        document.getElementById('bannerPrev').innerHTML = `<img src="${e.target.result}" style="max-width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid var(--g200)">`;
+        toast('🖼️ Preview banner berhasil dimuat!');
+      };
+      r.readAsDataURL(inp.files[0]);
+    }
+  }
+
+  // Jalankan inisialisasi awal saat halaman termuat
+  saveToStorage();
 </script>
 </body>
 </html>
