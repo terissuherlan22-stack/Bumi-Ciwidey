@@ -392,7 +392,7 @@ tr:hover td{background:#f9faf8}
   const db = getDatabase(app);
   const dbRef = ref(db, 'tokoData');
 
-  // ===== DATABASE SINKRONISASI INITIAL STATE =====
+  // ===== DATABASE SINKRONISASI INITIAL STATE (MENGGUNAKAN WINDOW AGAR GLOBAL) =====
   window.cats = JSON.parse(localStorage.getItem('bc_cats')) || ['Sayur', 'Buah', 'Paket', 'Bumbu'];
   window.prods = JSON.parse(localStorage.getItem('bc_prods')) || [
     {id:1,nm:'Bayam Organik',cat:'Sayur',price:8000,disc:null,stk:45,unit:'ikat',emoji:'🥬',feat:true,act:true,desc:'Bayam segar dipetik pagi dari kebun Ciwidey. Bebas pestisida.',imgs:[]},
@@ -406,34 +406,34 @@ tr:hover td{background:#f9faf8}
   ];
   window.orders = JSON.parse(localStorage.getItem('bc_orders')) || [];
   
-  const defaultDeliveryDates=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);const iso=d.toISOString().slice(0,10);return {id:i+1,date:iso,on:true}});
+  const defaultDeliveryDates = [...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);const iso=d.toISOString().slice(0,10);return {id:i+1,date:iso,on:true}});
   window.ongkirs = JSON.parse(localStorage.getItem('bc_ongkirs')) || [{id:1,area:'Bandung Kota',price:10000},{id:2,area:'Cimahi',price:12000},{id:3,area:'Ciwidey',price:8000},{id:4,area:'Kopo',price:15000},{id:5,area:'Margahayu',price:12000}];
-  window.deliveryDates=JSON.parse(localStorage.getItem('bc_deliveryDates'))||defaultDeliveryDates;
-  window.jadwals=JSON.parse(localStorage.getItem('bc_jadwals'))||[{id:1,nm:'Pagi',icon:'🌅',time:'06:00-09:00',on:true},{id:2,nm:'Siang',icon:'☀️',time:'11:00-13:00',on:true},{id:3,nm:'Sore',icon:'🌇',time:'15:00-17:00',on:false}];
-  window.promos=[{id:1,nm:'BUMICIWIDEY15',type:'Voucher',val:'15%',berlaku:'Pelanggan baru, min Rp50.000'}];
+  window.deliveryDates = JSON.parse(localStorage.getItem('bc_deliveryDates')) || defaultDeliveryDates;
+  window.jadwals = JSON.parse(localStorage.getItem('bc_jadwals')) || [{id:1,nm:'Pagi',icon:'🌅',time:'06:00-09:00',on:true},{id:2,nm:'Siang',icon:'☀️',time:'11:00-13:00',on:true},{id:3,nm:'Sore',icon:'🌇',time:'15:00-17:00',on:false}];
+  window.promos = [{id:1,nm:'BUMICIWIDEY15',type:'Voucher',val:'15%',berlaku:'Pelanggan baru, min Rp50.000'}];
   
-  window.reviews=[
+  window.reviews = [
     {nm:'Siti R.',stars:5,txt:'Bayamnya segar banget! Sudah langganan tiap minggu. Recommended!'},
     {nm:'Budi S.',stars:5,txt:'Paket hemat sangat worth it, kualitas bagus dan dikirim cepat.'},
     {nm:'Rina D.',stars:4,txt:'Mantap! Sayurnya masih segar waktu sampai. Harga juga oke.'}
   ];
 
-  const ADMIN_DEFAULT_WA='6281234567890';
-  window.getAdminWA = function() { return localStorage.getItem('bc_adminWA')||ADMIN_DEFAULT_WA; }
-  const fmt=n=>'Rp '+n.toLocaleString('id-ID');
+  const ADMIN_DEFAULT_WA = '6281234567890';
+  window.getAdminWA = function() { return localStorage.getItem('bc_adminWA') || ADMIN_DEFAULT_WA; }
+  const fmt = n => 'Rp ' + n.toLocaleString('id-ID');
   window.toast = function(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
 
   // ===== KODE AKTIVITAS KERANJANG & CHECKOUT =====
-  let cart=[],sched='',payMode='COD',vcDisc=0;
+  let cart = [], sched = '', payMode = 'COD', vcDisc = 0;
 
   window.addCart = function(pid){
-    const p=prods.find(x=>x.id===pid);if(!p||p.stk===0)return;
-    const ex=cart.find(x=>x.id===pid);
-    ex?ex.qty=Math.min(ex.qty+1,p.stk):cart.push({id:pid,nm:p.nm,emoji:p.emoji,img:p.imgs&&p.imgs[0]||null,price:p.disc||p.price,qty:1});
-    renderCart();toast('✅ '+p.nm+' ditambahkan!');
+    const p = window.prods.find(x=>x.id===pid); if(!p||p.stk===0) return;
+    const ex = cart.find(x=>x.id===pid);
+    ex ? ex.qty=Math.min(ex.qty+1,p.stk) : cart.push({id:pid,nm:p.nm,emoji:p.emoji,img:p.imgs&&p.imgs[0]||null,price:p.disc||p.price,qty:1});
+    renderCart(); toast('✅ '+p.nm+' ditambahkan!');
   }
-  window.rmCart = function(id){cart=cart.filter(x=>x.id!==id);renderCart()}
-  window.chQty = function(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)rmCart(id);else renderCart()}
+  window.rmCart = function(id){cart=cart.filter(x=>x.id!==id); renderCart()}
+  window.chQty = function(id,d){const i=cart.find(x=>x.id===id); if(!i) return; i.qty+=d; if(i.qty<=0) rmCart(id); else renderCart()}
   function cartTotal(){return cart.reduce((s,i)=>s+i.price*i.qty,0)}
 
   function renderCart(){
@@ -446,75 +446,79 @@ tr:hover td{background:#f9faf8}
   }
 
   window.toggleCart = function(){document.getElementById('cartDrw').classList.toggle('open');document.getElementById('cartOv').classList.toggle('open')}
-  function populateDeliveryDates(){const s=document.getElementById('co_date');const active=deliveryDates.filter(d=>d.on);if(!s)return;s.innerHTML=active.length?'<option value="">Pilih tanggal pengiriman...</option>'+active.map(d=>`<option value="${d.date}">${new Date(d.date).toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}</option>`).join(''):'<option value="">Belum ada tanggal tersedia</option>'}
-  function populateScheduleButtons(){const container=document.getElementById('co_sched');const active=jadwals.filter(d=>d.on);if(!container)return;container.innerHTML=active.map((s,i)=>`<button class="sched-btn ${i===0?'sel':''}" onclick="selSched(this,'${s.nm} ${s.time}')">${s.icon} ${s.nm}<br><small>${s.time}</small></button>`).join('');sched=active[0]?active[0].nm+' '+active[0].time:''}
+  function populateDeliveryDates(){const s=document.getElementById('co_date'); const active=window.deliveryDates.filter(d=>d.on); if(!s) return; s.innerHTML=active.length?'<option value="">Pilih tanggal pengiriman...</option>'+active.map(d=>`<option value="${d.date}">${new Date(d.date).toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}</option>`).join(''):'<option value="">Belum ada tanggal tersedia</option>'}
+  function populateScheduleButtons(){const container=document.getElementById('co_sched'); const active=window.jadwals.filter(d=>d.on); if(!container) return; container.innerHTML=active.map((s,i)=>`<button class="sched-btn ${i===0?'sel':''}" onclick="selSched(this,'${s.nm} ${s.time}')">${s.icon} ${s.nm}<br><small>${s.time}</small></button>`).join(''); sched=active[0]?active[0].nm+' '+active[0].time:''}
 
   window.openCO = function(){
-    const freshOngkirs = localStorage.getItem('bc_ongkirs');
-    if (freshOngkirs) ongkirs = JSON.parse(freshOngkirs);
     if(!cart.length){toast('⚠️ Keranjang kosong!');return}
     toggleCart();
     const s=document.getElementById('co_area');
-    s.innerHTML='<option value="">Pilih area pengiriman...</option>'+ongkirs.map(o=>`<option value="${o.id}">${o.area} - ${fmt(o.price)}</option>`).join('');
+    s.innerHTML='<option value="">Pilih area pengiriman...</option>'+window.ongkirs.map(o=>`<option value="${o.id}">${o.area} - ${fmt(o.price)}</option>`).join('');
     populateDeliveryDates();
     populateScheduleButtons();
-    vcDisc=0;document.getElementById('vc_info').textContent='';updateSum();
+    vcDisc=0; document.getElementById('vc_info').textContent=''; updateSum();
     document.getElementById('coModal').classList.add('open');
   }
 
   window.closeCO = function(){document.getElementById('coModal').classList.remove('open')}
   window.updateSum = function(){
-    const aid=parseInt(document.getElementById('co_area').value),ok=ongkirs.find(o=>o.id===aid);
-    const sub=cartTotal(),ov=ok?ok.price:0,tot=sub+ov-vcDisc;
+    const aid=parseInt(document.getElementById('co_area').value), ok=window.ongkirs.find(o=>o.id===aid);
+    const sub=cartTotal(), ov=ok?ok.price:0, tot=sub+ov-vcDisc;
     document.getElementById('ordSum').innerHTML=`<div class="ord-row"><span>Subtotal</span><span>${fmt(sub)}</span></div><div class="ord-row"><span>Ongkos Kirim</span><span>${ov?fmt(ov):'—'}</span></div>${vcDisc?`<div class="ord-row" style="color:var(--g600)"><span>✅ Diskon</span><span>−${fmt(vcDisc)}</span></div>`:''}<div class="ord-row ord-total"><span>Total Bayar</span><span>${fmt(tot)}</span></div>`;
   }
 
-  window.selSched = function(btn,v){document.querySelectorAll('.sched-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');sched=v}
-  window.selPay = function(btn,v){document.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');payMode=v}
+  window.selSched = function(btn,v){document.querySelectorAll('.sched-btn').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); sched=v}
+  window.selPay = function(btn,v){document.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); payMode=v}
 
   window.applyVC = function(){
-    const c=document.getElementById('co_vc').value.toUpperCase().trim(),inf=document.getElementById('vc_info');
-    if(c==='BUMICIWIDEY15'&&cartTotal()>=50000){vcDisc=Math.round(cartTotal()*.15);inf.style.color='var(--g600)';inf.textContent='¼ Hemat '+fmt(vcDisc)}
-    else{inf.style.color='var(--red)';inf.textContent='¼ Voucher tidak memenuhi syarat';vcDisc=0}
+    const c=document.getElementById('co_vc').value.toUpperCase().trim(), inf=document.getElementById('vc_info');
+    if(c==='BUMICIWIDEY15' && cartTotal()>=50000){vcDisc=Math.round(cartTotal()*.15); inf.style.color='var(--g600)'; inf.textContent='¼ Hemat '+fmt(vcDisc)}
+    else{inf.style.color='var(--red)'; inf.textContent='¼ Voucher tidak memenuhi syarat'; vcDisc=0}
     updateSum();
   }
 
   window.submitOrder = function(){
-    const nm=document.getElementById('co_nm').value.trim(),wa=document.getElementById('co_wa').value.trim(),al=document.getElementById('co_al').value.trim(),aid=parseInt(document.getElementById('co_area').value),dd=document.getElementById('co_date').value;
+    const nm=document.getElementById('co_nm').value.trim(), wa=document.getElementById('co_wa').value.trim(), al=document.getElementById('co_al').value.trim(), aid=parseInt(document.getElementById('co_area').value), dd=document.getElementById('co_date').value;
     if(!nm||!wa||!al||!aid||!dd){toast('⚠️ Lengkapi semua data!');return}
-    const ok=ongkirs.find(o=>o.id===aid),ov=ok?ok.price:0,sub=cartTotal(),tot=sub+ov-vcDisc;
+    const ok=window.ongkirs.find(o=>o.id===aid), ov=ok?ok.price:0, sub=cartTotal(), tot=sub+ov-vcDisc;
     const oid='ORD-'+Date.now().toString().slice(-6);
 
-    let currentOrders = JSON.parse(localStorage.getItem('bc_orders')) || [];
     const newOrderData = {id:oid,cust:nm,wa:wa,al:al,area:ok.area,items:cart,jadwal:sched,pay:payMode,status:'Menunggu',date:dd,total:tot};
-    currentOrders.unshift(newOrderData);
-    orders = currentOrders;
-    localStorage.setItem('bc_orders', JSON.stringify(currentOrders));
+    window.orders.unshift(newOrderData);
+    localStorage.setItem('bc_orders', JSON.stringify(window.orders));
 
-    cart.forEach(item=>{let p=prods.find(x=>x.id===item.id);if(p)p.stk=Math.max(0,p.stk-item.qty)});
-    localStorage.setItem('bc_prods',JSON.stringify(prods));
+    cart.forEach(item=>{let p=window.prods.find(x=>x.id===item.id); if(p) p.stk=Math.max(0,p.stk-item.qty)});
+    localStorage.setItem('bc_prods',JSON.stringify(window.prods));
 
-    // UPDATE DATABASE CLOUD FIREBASE AGAR ADMIN LANGSUNG JALAN
-    set(ref(db, 'tokoData/orders'), orders);
-    set(ref(db, 'tokoData/prods'), prods);
+    // UPDATE DATABASE CLOUD FIREBASE KESELURUHAN (SINKRON KE ADMIN)
+    set(dbRef, {
+      cats: window.cats,
+      prods: window.prods,
+      orders: window.orders,
+      ongkirs: window.ongkirs,
+      jadwals: window.jadwals,
+      deliveryDates: window.deliveryDates,
+      adminWA: window.getAdminWA(),
+      homepageBanner: localStorage.getItem('bc_homepage_banner') || ""
+    });
 
     const lines=cart.map(i=>`* ${i.nm} x${i.qty} = ${fmt(i.price*i.qty)}`).join('%0A');
     const msg=`🌿 *PESANAN BUMI CIWIDEY*%0A%0AOrder ID: ${oid}%0A%0ANama: ${nm}%0AAlamat: ${al}%0A%0A*Detail:*%0A${lines}%0A%0A*TOTAL: ${fmt(tot)}*`;
     window.open(`https://wa.me/${getAdminWA()}?text=${msg}`,'_blank');
 
-    cart=[];vcDisc=0;renderCart();closeCO();renderProds();toast('🎉 Pesanan terkirim!');
+    cart=[]; vcDisc=0; renderCart(); closeCO(); window.renderProds(); toast('🎉 Pesanan terkirim!');
   }
 
   // ===== RENDER HALAMAN UTAMA TOKO =====
-  let actCat='Semua',srchQ='',sortM='';
-  window.renderCats = function(){const all=['Semua',...cats];document.getElementById('catBar').innerHTML=all.map(c=>`<button class="cat-btn ${c===actCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('')}
-  window.setCat = function(c){actCat=c;renderCats();renderProds()}
-  window.filterProds = function(){srchQ=document.getElementById('srchInp').value.toLowerCase();sortM=document.getElementById('sortSel').value;renderProds()}
+  let actCat='Semua', srchQ='', sortM='';
+  window.renderCats = function(){const all=['Semua',...window.cats]; document.getElementById('catBar').innerHTML=all.map(c=>`<button class="cat-btn ${c===actCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('')}
+  window.setCat = function(c){actCat=c; renderCats(); window.renderProds()}
+  window.filterProds = function(){srchQ=document.getElementById('srchInp').value.toLowerCase(); sortM=document.getElementById('sortSel').value; window.renderProds()}
 
   window.renderProds = function(){
-    let ps=prods.filter(p=>p.act);
-    if(actCat!=='Semua')ps=ps.filter(p=>p.cat===actCat);
-    if(srchQ)ps=ps.filter(p=>p.nm.toLowerCase().includes(srchQ));
+    let ps=window.prods.filter(p=>p.act);
+    if(actCat!=='Semua') ps=ps.filter(p=>p.cat===actCat);
+    if(srchQ) ps=ps.filter(p=>p.nm.toLowerCase().includes(srchQ));
     if (sortM === 'murah') ps = [...ps].sort((a,b) => (a.disc||a.price)-(b.disc||b.price));
     else if (sortM === 'mahal') ps = [...ps].sort((a,b) => (b.disc||b.price)-(a.disc||a.price));
     else if (sortM === 'stok') ps = [...ps].sort((a,b) => b.stk-a.stk);
@@ -529,21 +533,20 @@ tr:hover td{background:#f9faf8}
 
   let dtlQty=1;
   window.openPD = function(id){
-    const p=prods.find(x=>x.id===id);if(!p)return;dtlQty=1;
+    const p=window.prods.find(x=>x.id===id); if(!p) return; dtlQty=1;
     const src=p.imgs&&p.imgs[0];
     document.getElementById('pdBody').innerHTML=`<div class="pd-grid"><div>${src?`<img src="${src}" style="width:100%">`:`<span style="font-size:60px">${p.emoji}</span>`}</div><div><h2>${p.nm}</h2><p>${p.desc||''}</p><br><div style="font-size:20px;font-weight:700;color:var(--g600)">${fmt(p.price)}</div><br><button class="btn-p" onclick="addCartQty(${p.id})">Masukkan Keranjang</button></div></div>`;
     document.getElementById('pdModal').classList.add('open');
   }
-  window.addCartQty = function(id){addCart(id);closePD()}
+  window.addCartQty = function(id){addCart(id); closePD()}
   window.closePD = function(){document.getElementById('pdModal').classList.remove('open')}
-  window.renderRevs = function(){document.getElementById('revGrid').innerHTML=reviews.map(r=>`<div class="rev-card"><strong>${r.nm}</strong><p>${r.txt}</p></div>`).join('')}
+  window.renderRevs = function(){document.getElementById('revGrid').innerHTML=window.reviews.map(r=>`<div class="rev-card"><strong>${r.nm}</strong><p>${r.txt}</p></div>`).join('')}
   window.openTrack = function(){document.getElementById('trackModal').classList.add('open')}
   window.closeTrack = function(){document.getElementById('trackModal').classList.remove('open')}
   window.openWA = function(){window.open('https://wa.me/'+getAdminWA(),'_blank')}
   window.trackOrder = function(){
     const id=document.getElementById('trackId').value.trim();
-    let currentOrders = JSON.parse(localStorage.getItem('bc_orders')) || orders;
-    const o=currentOrders.find(x=>x.id.toLowerCase()===id.toLowerCase());
+    const o=window.orders.find(x=>x.id.toLowerCase()===id.toLowerCase());
     document.getElementById('trackRes').innerHTML=o?`<p>Status Order ${o.id}: <strong>${o.status}</strong></p>`:`<p style="color:red">Tidak ditemukan</p>`;
   }
   window.scrollProds = function(){document.getElementById('prod-sec').scrollIntoView({behavior:'smooth'})}
@@ -554,13 +557,14 @@ tr:hover td{background:#f9faf8}
     if(data) {
       console.log("Menerima pembaruan data dari Firebase secara Real-time!");
       
-      if(data.cats) { cats = data.cats; localStorage.setItem('bc_cats', JSON.stringify(cats)); }
-      if(data.prods) { prods = data.prods; localStorage.setItem('bc_prods', JSON.stringify(prods)); }
-      if(data.orders) { orders = data.orders; localStorage.setItem('bc_orders', JSON.stringify(orders)); }
-      if(data.ongkirs) { ongkirs = data.ongkirs; localStorage.setItem('bc_ongkirs', JSON.stringify(ongkirs)); }
-      if(data.jadwals) { jadwals = data.jadwals; localStorage.setItem('bc_jadwals', JSON.stringify(jadwals)); }
+      // Mengisi langsung ke objek WINDOW agar merubah data global global
+      if(data.cats) { window.cats = data.cats; localStorage.setItem('bc_cats', JSON.stringify(window.cats)); }
+      if(data.prods) { window.prods = data.prods; localStorage.setItem('bc_prods', JSON.stringify(window.prods)); }
+      if(data.orders) { window.orders = data.orders; localStorage.setItem('bc_orders', JSON.stringify(window.orders)); }
+      if(data.ongkirs) { window.ongkirs = data.ongkirs; localStorage.setItem('bc_ongkirs', JSON.stringify(window.ongkirs)); }
+      if(data.jadwals) { window.jadwals = data.jadwals; localStorage.setItem('bc_jadwals', JSON.stringify(window.jadwals)); }
+      if(data.deliveryDates) { window.deliveryDates = data.deliveryDates; localStorage.setItem('bc_deliveryDates', JSON.stringify(window.deliveryDates)); }
       if(data.adminWA) { localStorage.setItem('bc_adminWA', data.adminWA); }
-      if(data.deliveryDates) { deliveryDates = data.deliveryDates; localStorage.setItem('bc_deliveryDates', JSON.stringify(deliveryDates)); }
       
       // Update Banner Toko Secara Otomatis
       if(data.homepageBanner) { 
@@ -574,16 +578,16 @@ tr:hover td{background:#f9faf8}
         if(bSec) bSec.style.display = 'none';
       }
 
-      // Render Ulang Tampilan Toko Berdasarkan Data Baru
+      // Render Ulang Tampilan Toko Berdasarkan Data Baru dari Firebase
       renderCats();
-      renderProds();
+      window.renderProds();
     }
   });
 
   // Eksekusi fungsi utama saat pertama dibuka
   renderCats();
-  renderProds();
-  renderRevs();
+  window.renderProds();
+  window.renderRevs();
   
   const savedBanner = localStorage.getItem('bc_homepage_banner');
   if(savedBanner) {
