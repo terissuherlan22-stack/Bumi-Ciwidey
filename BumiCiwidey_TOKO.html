@@ -266,6 +266,40 @@ tr:hover td{background:#f9faf8}
 .star-btn:hover {
   transform: scale(1.1);
 }
+
+/* CART DRAWER - Default tersembunyi */
+.cart-drw {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 350px;
+  max-width: 90%;
+  background: white;
+  transform: translateX(100%);  /* Tersembunyi ke kanan */
+  transition: transform 0.3s ease;
+  z-index: 1001;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+}
+
+/* Saat dibuka */
+.cart-drw.open {
+  transform: translateX(0);  /* Muncul */
+}
+
+/* Overlay background */
+.cart-ov {
+  display: none;  /* Default tidak tampil */
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+}
+
+/* Saat overlay aktif */
+.cart-ov.active {
+  display: block;
+}
 </style>
 </head>
 <body>
@@ -527,6 +561,7 @@ tr:hover td{background:#f9faf8}
 
   var actCat = 'Semua';
   var srchQ = '';
+   window.cart = [];
     // Fungsi format angka
   function fmt(n) {
     return 'Rp ' + n.toLocaleString('id-ID');
@@ -1021,7 +1056,7 @@ window.submitOrder = function(){
   
   // Tutup modal & clear cart
   window.closeCO();
-  window.cart = [];
+ 
   window.renderCart();
   alert('Pesanan terkirim! 📱 Terima kasih!');
 };
@@ -1245,6 +1280,211 @@ window.renderProds = function(){
   
   console.log("✅ Products render:", ps.length);
 }
+
+// ========== FUNGSI addCart (PASTE DI FILE TOKO) ==========
+window.addCart = function(id) {
+  // Cek produk ada atau tidak
+  const p = window.prods.find(x => x.id === id);
+  
+  if(!p) {
+    alert('Produk tidak ditemukan!');
+    return;
+  }
+  
+  // Jika cart belum ada, buat array kosong
+  if(!window.cart) {
+    window.cart = [];
+  }
+  
+  // Cek kalau produk sudah di cart
+  const existing = window.cart.find(i => i.id === id);
+  
+  if(existing) {
+    // Kalau sudah ada, tambah quantity
+    existing.qty += 1;
+    console.log('Qty increased:', existing.qty);
+  } else {
+    // Kalau belum, tambah produk baru ke cart
+    window.cart.push({
+      id: p.id,
+      nm: p.nm,
+      price: p.disc || p.price,  // Harga diskon kalau ada
+      qty: 1,
+      unit: p.unit
+    });
+  }
+  
+  // Render ulang cart
+  window.renderCart();
+  
+  // Toast/alert
+  console.log('Added to cart:', p.nm);
+  alert(p.nm + ' ditambahkan ke keranjang! 🛒');
+  
+  // Refresh tampilan checkout
+  window.updateSum();
+}
+
+// ===== RENDER CART SESUAI HTML KAMU =====
+window.renderCart = function() {
+  const cartBody = document.getElementById('cartBody');
+  const cartTot = document.getElementById('cartTot');
+  
+  if(!window.cart || window.cart.length === 0) {
+    if(cartBody) cartBody.innerHTML = '<div class="cart-emp">Keranjang kosong 🛒</div>';
+    if(cartTot) cartTot.textContent = 'Rp 0';
+    return;
+  }
+  
+  // Hitung total
+  const total = window.cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  
+  // Render items
+  if(cartBody) {
+    cartBody.innerHTML = window.cart.map((i, idx) => `
+      <div class="cart-itm">
+        <div class="cart-itm-nm">${i.nm}</div>
+        <div class="cart-itm-qty">
+          <button onclick="window.changeQty(${idx}, -1)">-</button>
+          <span>${i.qty}</span>
+          <button onclick="window.changeQty(${idx}, 1)">+</button>
+        </div>
+        <div class="cart-itm-prc">${fmt(i.price * i.qty)}</div>
+        <button class="cart-itm-del" onclick="window.removeFromCart(${idx})">🗑</button>
+      </div>
+    `).join('');
+  }
+  
+  // Update total
+  if(cartTot) cartTot.textContent = fmt(total);
+  
+  console.log('Cart rendered:', window.cart.length, 'items, Total:', total);
+}
+
+window.removeFromCart = function(idx) {
+  if(window.cart && window.cart[idx]) {
+    window.cart.splice(idx, 1);
+    window.renderCart();
+    if(window.updateSum) window.updateSum();
+  }
+}
+
+window.removeFromCart = function(idx) {
+  if(window.cart && window.cart[idx]) {
+    window.cart.splice(idx, 1);
+    window.renderCart();
+    window.updateSum();
+  }
+}
+
+// ===== BUKA DETAIL PRODUK =====
+window.openPD = function(id) {
+  const p = window.prods.find(x => x.id === id);
+  if(!p) return;
+  
+  // Ambil gambar
+  let imgUrl = p.emoji;
+  if(p.imgs && p.imgs.length > 0) {
+    const img = p.imgs[0];
+    imgUrl = (typeof img === 'string') ? img : (img.url || p.emoji);
+  }
+  
+  const pdBody = document.getElementById('pdBody');
+  pdBody.innerHTML = `
+    <div style="max-width:300px;margin:0 auto">
+      <img src="${imgUrl}" style="width:100%;height:250px;object-fit:contain;background:#f5f5f5;border-radius:12px">
+      <h3 style="margin:16px 0 8px">${p.nm}</h3>
+      <div style="color:#666;font-size:14px;margin-bottom:12px">${p.desc || ''}</div>
+      <div style="font-size:24px;font-weight:700;color:var(--g600)">${fmt(p.disc || p.price)}</div>
+      ${p.disc ? `<div style="text-decoration:line-through;color:#999;font-size:14px">${fmt(p.price)}</div>` : ''}
+      <div style="margin-top:12px;font-size:13px;color:#666">Stok: ${p.stk} ${p.unit}</div>
+      <button onclick="addCart(${p.id})" style="width:100%;background:var(--g500);color:white;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:20px">Tambah ke Keranjang 🛒</button>
+    </div>
+  `;
+  
+  document.getElementById('pdModal').style.display = 'flex';
+}
+
+window.closePD = function() {
+  document.getElementById('pdModal').style.display = 'none';
+}
+
+// ===== TOGGLE CART DRAWER =====
+window.toggleCart = function() {
+  const ov = document.getElementById('cartOv');
+  const drw = document.getElementById('cartDrw');
+  
+  if(!ov || !drw) {
+    console.log('Elemen cart tidak ada!');
+    return;
+  }
+  
+  // Toggle display
+  if(drw.classList.contains('open')) {
+    drw.classList.remove('open');
+    ov.style.display = 'none';
+  } else {
+    drw.classList.add('open');
+    ov.style.display = 'block';
+    window.renderCart();  // Refresh cart saat dibuka
+  }
+}
+
+window.closeCart = function() {
+  const modal = document.getElementById('cartModal');
+  if(modal) modal.style.display = 'none';
+}
+
+window.updateSum = function() {
+  if(!window.cart || window.cart.length === 0) {
+    const el = document.getElementById('orderSummary');
+    if(el) el.innerHTML = '<div style="text-align:center;color:#888">Keranjang kosong</div>';
+    return;
+  }
+  
+  const subtotal = window.cart.reduce((s, i) => s + (i.price * i.qty), 0);
+  const el = document.getElementById('orderSummary');
+  if(el) {
+    el.innerHTML = `
+      <div style="padding:12px;background:#f5f5f5;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span>Subtotal</span>
+          <span style="font-weight:700">${fmt(subtotal)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:18px">
+          <span>Total</span>
+          <span>${fmt(subtotal)}</span>
+        </div>
+      </div>
+      <button onclick="window.checkAndOpenCO()" style="width:100%;background:var(--g500);color:white;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-top:12px">Lanjut Checkout 🛒</button>
+    `;
+  }
+}
+
+// ===== CHANGE QTY =====
+window.changeQty = function(idx, delta) {
+  if(!window.cart || !window.cart[idx]) return;
+  
+  window.cart[idx].qty += delta;
+  
+  // Kalau qty jadi 0, hapus item
+  if(window.cart[idx].qty <= 0) {
+    window.cart.splice(idx, 1);
+  }
+  
+  window.renderCart();
+  window.updateSum();
+}
+
+// ===== REMOVE FROM CART =====
+window.removeFromCart = function(idx) {
+  if(window.cart && window.cart[idx]) {
+    window.cart.splice(idx, 1);
+    window.renderCart();
+    window.updateSum();
+  }
+}
+
 </script>
 </body>
 </html>
