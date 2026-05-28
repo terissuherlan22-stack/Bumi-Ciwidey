@@ -219,6 +219,53 @@ tr:hover td{background:#f9faf8}
   border-radius: 50%;  /* bikin bulat */
   object-fit: cover;   /* isi gambar tetap proporsional */
 }
+
+/* REVIEW CARD */
+.review-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--sh);
+  margin-bottom: 12px;
+}
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.review-name {
+  font-weight: 600;
+  color: var(--g700);
+}
+.review-date {
+  font-size: 12px;
+  color: #999;
+}
+.review-stars {
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+.review-text {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* STAR BUTTON */
+.star-btn {
+  background: none;
+  border: 2px solid #FFD700;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: 0.2s;
+}
+.star-btn:hover {
+  transform: scale(1.1);
+}
 </style>
 </head>
 <body>
@@ -251,10 +298,13 @@ tr:hover td{background:#f9faf8}
     <div class="hero-badge">🌿 Langsung dari kebun Ciwidey, Bandung</div>
     <h1>Sayur <em>Segar</em><br>Setiap Hari</h1>
     <p>Sayur organik pilihan dari pegunungan Ciwidey. Bebas pestisida, dipetik pagi hari, dikirim segar ke rumahmu.</p>
-    <div class="hero-cta">
-      <button class="btn-hero-p" onclick="scrollProds()">🛒 Belanja Sekarang</button>
-      <button class="btn-hero-s" onclick="openWA()">💬 Tanya Admin</button>
-    </div>
+  <div class="hero-cta">
+    <button class="btn-hero-p" onclick="scrollProds()">🛒 Belanja Sekarang</button>
+    <button class="btn-hero-s" onclick="openWA()">💬 Tanya Admin</button>
+      <!-- Button Ulasan BARU -->
+  <button onclick="openReview()" style="background:var(--g500);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px">⭐ Ulasan</button>
+
+  </div>
     <div class="hero-stats">
       <div class="hero-stat"><div class="hsn">500+</div><div class="hsl">Pelanggan Puas</div></div>
       <div class="hero-stat"><div class="hsn">50+</div><div class="hsl">Jenis Produk</div></div>
@@ -313,7 +363,59 @@ tr:hover td{background:#f9faf8}
   <div class="cart-body" id="cartBody"></div>
   <div class="cart-foot">
     <div class="cart-tot"><span class="cart-tot-lbl">Total Belanja</span><span class="cart-tot-val" id="cartTot">Rp 0</span></div>
-    <button class="co-btn" onclick="openCO()">Lanjut Checkout →</button>
+      <button class="co-btn" onclick="checkAndOpenCO()">Lanjut Checkout →</button>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-ov" id="loginModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h3>🔑 Login</h3><button class="mx" onclick="closeLogin()">✕</button></div>
+    <div class="modal-body">
+      <div class="fl">
+        <label>Nomor WhatsApp</label>
+        <input class="finp" id="login_wa" placeholder="081234567890">
+      </div>
+      <div class="fl">
+        <label>Password</label>
+        <input class="finp" type="password" id="login_pass" placeholder="Masukkan password">
+      </div>
+      <button class="btn-p" style="width:100%;margin-top:8px" onclick="doLogin()">Login</button>
+      <p style="text-align:center;font-size:13px;margin-top:16px">
+        Belum punya akun? 
+        <a href="#" onclick="closeLogin();openRegister();return false" style="color:var(--g500)">Daftar</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal-ov" id="registerModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h3>📝 Daftar Akun</h3><button class="mx" onclick="closeRegister()">✕</button></div>
+    <div class="modal-body">
+      <div class="fl">
+        <label>Nama Lengkap</label>
+        <input class="finp" id="reg_nm" placeholder="Nama Anda">
+      </div>
+      <div class="fl">
+        <label>Nomor WhatsApp</label>
+        <input class="finp" id="reg_wa" placeholder="081234567890">
+      </div>
+      <div class="fl">
+        <label>Password</label>
+        <input class="finp" type="password" id="reg_pass" placeholder="Buat password">
+      </div>
+      <div class="fl">
+        <label>Konfirmasi Password</label>
+        <input class="finp" type="password" id="reg_pass2" placeholder="Ulangi password">
+      </div>
+      <button class="btn-p" style="width:100%;margin-top:8px" onclick="doRegister()">Daftar</button>
+      <p style="text-align:center;font-size:13px;margin-top:16px">
+        Sudah punya akun? 
+        <a href="#" onclick="closeRegister();openLogin();return false" style="color:var(--g500)">Login</a>
+      </p>
+    </div>
   </div>
 </div>
 
@@ -350,6 +452,17 @@ tr:hover td{background:#f9faf8}
   </div>
 </div>
 
+
+<!-- PROFIL MODAL -->
+<div class="modal-ov" id="profileModal">
+  <div class="modal" style="max-width:480px;max-height:80vh">
+    <div class="modal-head"><h3>👤 Profil Saya</h3><button class="mx" onclick="closeProfile()">✕</button></div>
+    <div class="modal-body" id="profileBody" style="overflow-y:auto">
+      <!-- Konten akan di-generate oleh JS -->
+    </div>
+  </div>
+</div>
+
 <!-- PRODUCT DETAIL MODAL -->
 <div class="modal-ov" id="pdModal">
   <div class="modal" style="max-width:660px">
@@ -366,6 +479,44 @@ tr:hover td{background:#f9faf8}
       <div class="fl"><label>Nomor Order</label><input class="finp" id="trackId" placeholder="Contoh: ORD-001"><p style="font-size:12px;color:var(--gr400);margin-top:4px">Nomor order ada di pesan WhatsApp kamu</p></div>
       <button class="btn-p" style="width:100%;padding:12px;font-size:15px;margin-bottom:12px" onclick="trackOrder()">🔍 Cek Status</button>
       <div id="trackRes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="modal-ov" id="adminModal">
+  <div class="modal" style="max-width:600px;max-height:80vh">
+    <div class="modal-head"><h3>👑 Admin Panel</h3><button class="mx" onclick="closeAdmin()">✕</button></div>
+    <div class="modal-body" id="adminBody" style="overflow-y:auto">
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="modal-ov" id="reviewModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3>⭐ Beri Ulasan</h3><button class="mx" onclick="closeReview()">✕</button></div>
+    <div class="modal-body">
+      <div class="fl">
+        <label>Nama Anda</label>
+        <input class="finp" id="review_nm" placeholder="Nama panggilan">
+      </div>
+      <div class="fl">
+        <label>Rating</label>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="star-btn" onclick="setRating(1)">⭐</button>
+          <button class="star-btn" onclick="setRating(2)">⭐⭐</button>
+          <button class="star-btn" onclick="setRating(3)">⭐⭐⭐</button>
+          <button class="star-btn" onclick="setRating(4)">⭐⭐⭐⭐</button>
+          <button class="star-btn" onclick="setRating(5)">⭐⭐⭐⭐⭐</button>
+        </div>
+        <input type="hidden" id="review_rating" value="0">
+      </div>
+      <div class="fl">
+        <label>Ulasan Anda</label>
+        <textarea class="finp" id="review_txt" rows="3" placeholder="Ceritakan pengalaman Anda..."></textarea>
+      </div>
+      <button class="btn-p" style="width:100%" onclick="submitReview()">Kirim Ulasan</button>
     </div>
   </div>
 </div>
@@ -515,6 +666,504 @@ tr:hover td{background:#f9faf8}
       window.renderCats();
       window.renderProds();
   });
+
+// ===== SISTEM LOGIN & REGISTER =====
+
+// Cek user sedang login
+window.currentUser = JSON.parse(localStorage.getItem('bc_currentUser')) || null;
+
+// ===== SISTEM LOGIN & REGISTER =====
+window.updateAuthUI = function(){
+  const authContainer = document.getElementById('authButtons');
+  if(!authContainer) return;
+  
+  if(window.currentUser){
+    authContainer.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="openProfile()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid white;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">👤 Akun</button>
+        <button onclick="doLogout()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid white;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">Logout</button>
+      </div>
+    `;
+  } else {
+    authContainer.innerHTML = `
+      <button onclick="openLogin()" style="background:var(--g500);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px">🔑 Login</button>
+    `;
+  }
+}
+
+// OPEN/CLOSE MODAL
+window.openLogin = function(){
+  document.getElementById('loginModal').style.display = 'flex';
+}
+window.closeLogin = function(){
+  document.getElementById('loginModal').style.display = 'none';
+}
+window.openRegister = function(){
+  document.getElementById('registerModal').style.display = 'flex';
+}
+window.closeRegister = function(){
+  document.getElementById('registerModal').style.display = 'none';
+}
+
+// LOGIN
+window.doLogin = function(){
+  const wa = document.getElementById('login_wa').value.trim();
+  const pass = document.getElementById('login_pass').value.trim();
+  
+  if(!wa || !pass){
+    alert('Mohon isi semua field!');
+    return;
+  }
+  
+  const users = JSON.parse(localStorage.getItem('bc_users')) || [];
+  const user = users.find(u => u.wa === wa && u.password === pass);
+  
+  if(user){
+    window.currentUser = user;
+    localStorage.setItem('bc_currentUser', JSON.stringify(user));
+    closeLogin();
+    updateAuthUI();
+    alert('Selamat datang, ' + user.nama + '! 🎉');
+  } else {
+    alert('Nomor WA atau password salah!');
+  }
+}
+
+// REGISTER
+window.doRegister = function(){
+  const nm = document.getElementById('reg_nm').value.trim();
+  const wa = document.getElementById('reg_wa').value.trim();
+  const pass = document.getElementById('reg_pass').value.trim();
+  const pass2 = document.getElementById('reg_pass2').value.trim();
+  
+  if(!nm || !wa || !pass || !pass2){
+    alert('Mohon isi semua field!');
+    return;
+  }
+  
+  if(pass !== pass2){
+    alert('Password tidak cocok!');
+    return;
+  }
+  
+  if(pass.length < 4){
+    alert('Password minimal 4 karakter!');
+    return;
+  }
+  
+  const users = JSON.parse(localStorage.getItem('bc_users')) || [];
+  
+  if(users.find(u => u.wa === wa)){
+    alert('Nomor WA sudah terdaftar!');
+    return;
+  }
+  
+  const newUser = {
+    id: 'USER-' + Date.now(),
+    nama: nm,
+    wa: wa,
+    password: pass,
+    created: new Date().toISOString().slice(0,10),
+    role: 'customer'
+  };
+  
+  users.push(newUser);
+  localStorage.setItem('bc_users', JSON.stringify(users));
+  
+  // Auto login
+  window.currentUser = newUser;
+  localStorage.setItem('bc_currentUser', JSON.stringify(newUser));
+  closeRegister();
+  updateAuthUI();
+  alert('Akun berhasil dibuat! 🎉');
+}
+
+// LOGOUT
+window.doLogout = function(){
+  if(confirm('Yakin logout?')){
+    window.currentUser = null;
+    localStorage.removeItem('bc_currentUser');
+    updateAuthUI();
+    alert('Sampai jumpa! 👋');
+  }
+}
+
+// Jalankan saat halaman load
+document.addEventListener('DOMContentLoaded', function() {
+  window.updateAuthUI();
+});
+// ===== AUTO-FILL CHECKOUT SAAT LOGIN =====
+
+// Fungsi pembuka checkout modal dengan auto-fill
+window.openCO = function(){
+  // === AUTO-FILL JIKA SUDAH LOGIN ===
+  if(window.currentUser){
+    document.getElementById('co_nm').value = window.currentUser.nama;
+    document.getElementById('co_wa').value = window.currentUser.wa;
+    console.log('✅ Auto-fill dari: ' + window.currentUser.nama);
+  }
+  // ================================
+  
+  // Buka modal checkout
+  document.getElementById('coModal').style.display = 'flex';
+  window.updateSum();
+};
+
+// Atau cek dulu sebelum buka checkout
+window.checkAndOpenCO = function(){
+  if(!window.currentUser){
+    alert('Silakan login dulu ya! 🔑');
+    window.openLogin();
+    return;
+  }
+  
+  // Kalau sudah login, buka checkout dengan auto-fill
+  window.openCO();
+};
+
+// ===== HALAMAN PROFIL & RIWAYAT PESANAN =====
+
+// Buka Modal Profil
+window.openProfile = function(){
+  if(!window.currentUser){
+    alert('Silakan login dulu ya! 🔑');
+    window.openLogin();
+    return;
+  }
+  
+  const profileBody = document.getElementById('profileBody');
+  
+  // Ambil riwayat pesanan dari localStorage
+  const allOrders = JSON.parse(localStorage.getItem('bc_orders')) || [];
+  const myOrders = allOrders.filter(o => o.userId === window.currentUser.id);
+  
+  // Hitung total pesan
+  const totalOrders = myOrders.length;
+  const totalBelanja = myOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  
+  // Generate HTML
+  let html = `
+    <div style="background:linear-gradient(135deg,var(--g500),var(--g700));color:white;padding:20px;border-radius:12px;margin-bottom:20px">
+      <div style="font-size:40px;margin-bottom:8px">👤</div>
+      <div style="font-size:20px;font-weight:600">${window.currentUser.nama}</div>
+      <div style="font-size:14px;opacity:0.9">📱 ${window.currentUser.wa}</div>
+      <div style="font-size:12px;opacity:0.8;margin-top:8px">📅 Member since: ${window.currentUser.created}</div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div style="background:#f5f5f5;padding:16px;border-radius:10px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--g700)">${totalOrders}</div>
+        <div style="font-size:12px;color:#666">Total Pesanan</div>
+      </div>
+      <div style="background:#f5f5f5;padding:16px;border-radius:10px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:var(--g700)">${fmt(totalBelanja)}</div>
+        <div style="font-size:12px;color:#666">Total Belanja</div>
+      </div>
+    </div>
+    
+    <h4 style="margin:0 0 12px 0;color:var(--g700)">📦 Riwayat Pesanan</h4>
+  `;
+  
+  // Tampilkan pesanan terakhir
+  if(myOrders.length === 0){
+    html += `<div style="text-align:center;padding:30px;color:#888">Belum ada pesanan</div>`;
+  } else {
+    // Urutkan newest first
+    const sortedOrders = myOrders.sort((a,b) => b.timestamp - a.timestamp);
+    
+    html += sortedOrders.map(o => {
+      const date = new Date(o.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+      const items = o.items ? o.items.map(i => `• ${i.qty}x ${i.nm}`).join('<br>') : '-';
+      
+      return `
+        <div style="background:white;border:1px solid #eee;border-radius:10px;padding:14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-weight:600;color:var(--g700)">${o.orderId}</span>
+            <span style="font-size:12px;color:#888">${date}</span>
+          </div>
+          <div style="font-size:13px;color:#666;margin-bottom:6px">${items}</div>
+          <div style="font-weight:600;color:var(--g700)">Total: ${fmt(o.total)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  profileBody.innerHTML = html;
+  document.getElementById('profileModal').style.display = 'flex';
+}
+
+// Tutup Modal Profil
+window.closeProfile = function(){
+  document.getElementById('profileModal').style.display = 'none';
+};
+
+// ===== SUBMIT ORDER & SIMPAN KE HISTORI =====
+
+window.submitOrder = function(){
+  // Ambil data dari form
+  const nm = document.getElementById('co_nm').value.trim();
+  const wa = document.getElementById('co_wa').value.trim();
+  const al = document.getElementById('co_al').value.trim();
+  const area = document.getElementById('co_area').value;
+  const date = document.getElementById('co_date').value;
+  
+  // Validasi wajib isi
+  if(!nm || !wa || !al || !area || !date){
+    alert('Mohon isi semua field yang wajib diisi!');
+    return;
+  }
+  
+  if(!window.cart || window.cart.length === 0){
+    alert('Keranjang kosong!');
+    return;
+  }
+  
+  // Hitung total
+  const itemTotal = window.cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+  const ongkir = window.OngkirSelected || 0;
+  const diskon = window.vcDisc || 0;
+  const total = itemTotal + ongkir - diskon;
+  
+  // ===== SIMPAN KE HISTORI JIKA SUDAH LOGIN =====
+  if(window.currentUser){
+    const allOrders = JSON.parse(localStorage.getItem('bc_orders')) || [];
+    
+    allOrders.push({
+      orderId: 'ORD-' + Date.now(),
+      userId: window.currentUser.id,
+      userNm: nm,
+      wa: wa,
+      items: [...window.cart],
+      total: total,
+      ongkir: ongkir,
+      area: area,
+      date: date,
+      timestamp: Date.now()
+    });
+    
+    localStorage.setItem('bc_orders', JSON.stringify(allOrders));
+    console.log('✅ Pesanan disimpan ke histori');
+  }
+  // =========================================
+  
+  // Generate pesan WhatsApp
+  let msg = `*PESANAN BARU*\n`;
+  msg += `━━━━━━━━━━━━━━━━\n`;
+  msg += `📦 *Data Pemesan*\n`;
+  msg += `Nama: ${nm}\n`;
+  msg += `WA: ${wa}\n`;
+  msg += `Alamat: ${al}\n`;
+  msg += `Area: ${area}\n`;
+  msg += `Tgl Kirim: ${date}\n`;
+  msg += `━━━━━━━━━━━━━━━━\n`;
+  msg += `🛒 *Pesanan:*\n`;
+  
+  window.cart.forEach(i => {
+    msg += `• ${i.qty}x ${i.nm} = ${fmt(i.price * i.qty)}\n`;
+  });
+  
+  msg += `━━━━━━━━━━━━━━━━\n`;
+  msg += `Subtotal: ${fmt(itemTotal)}\n`;
+  msg += `Ongkir: ${fmt(ongkir)}\n`;
+  if(diskon > 0) msg += `Diskon: -${fmt(diskon)}\n`;
+  msg += `*TOTAL: ${fmt(total)}*\n`;
+  
+  // Kirim ke WhatsApp (ganti nomor admin di bawah ini)
+  const waAdmin = '628xxxxxxxxxxx'; // ← GANTI dengan nomor WhatsApp admin
+  window.open('https://wa.me/' + waAdmin + '?text=' + encodeURIComponent(msg));
+  
+  // Tutup modal & clear cart
+  window.closeCO();
+  window.cart = [];
+  window.renderCart();
+  alert('Pesanan terkirim! 📱 Terima kasih!');
+};
+
+// ===== ADMIN MODE: LIHAT SEMUA USER =====
+
+// Cek apakah admin
+window.isAdmin = function(){
+  return window.currentUser && window.currentUser.role === 'admin';
+}
+
+// Buka Modal Admin
+window.openAdmin = function(){
+  if(!window.isAdmin()){
+    alert('Akses ditolak! Hanya admin yang bisa masuk.');
+    return;
+  }
+  
+  const adminBody = document.getElementById('adminBody');
+  
+  // Ambil semua user
+  const users = JSON.parse(localStorage.getItem('bc_users')) || [];
+  const customers = users.filter(u => u.role === 'customer');
+  
+  // Ambil semua pesanan
+  const allOrders = JSON.parse(localStorage.getItem('bc_orders')) || [];
+  
+  // Generate HTML
+  let html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div style="background:var(--g100);padding:16px;border-radius:10px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--g700)">${customers.length}</div>
+        <div style="font-size:12px;color:#666">Total Pelanggan</div>
+      </div>
+      <div style="background:var(--g100);padding:16px;border-radius:10px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--g700)">${allOrders.length}</div>
+        <div style="font-size:12px;color:#666">Total Pesanan</div>
+      </div>
+    </div>
+    
+    <h4 style="margin:0 0 12px 0;color:var(--g700)">👥 Daftar Pelanggan</h4>
+  `;
+  
+  if(customers.length === 0){
+    html += `<div style="text-align:center;padding:30px;color:#888">Belum ada pelanggan</div>`;
+  } else {
+    html += customers.map(u => {
+      const userOrders = allOrders.filter(o => o.userId === u.id);
+      const totalBelanja = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      
+      return `
+        <div style="background:white;border:1px solid #eee;border-radius:10px;padding:14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:600;color:var(--g700)">${u.nama}</div>
+              <div style="font-size:13px;color:#666">📱 ${u.wa}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:14px;font-weight:600">${userOrders.length} pesan</div>
+              <div style="font-size:12px;color:#888">${fmt(totalBelanja)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  adminBody.innerHTML = html;
+  document.getElementById('adminModal').style.display = 'flex';
+}
+
+// Tutup Modal Admin
+window.closeAdmin = function(){
+  document.getElementById('adminModal').style.display = 'none';
+};
+
+// Buat user admin pertama (JALANKAN SEKALI SAJA di console browser)
+window.createAdmin = function(){
+  const users = JSON.parse(localStorage.getItem('bc_users')) || [];
+  
+  // Cek kalau belum ada admin
+  if(!users.find(u => u.role === 'admin')){
+    users.push({
+      id: 'ADMIN-001',
+      nama: 'Admin Bumi Ciwidey',
+      wa: '6280000000000', // Ganti nomor admin
+      password: 'admin123',
+      created: new Date().toISOString().slice(0,10),
+      role: 'admin'
+    });
+    
+    localStorage.setItem('bc_users', JSON.stringify(users));
+    alert('✅ Akun admin dibuat! WA: 6280000000000, Pass: admin123');
+  } else {
+    alert('Admin sudah ada!');
+  }
+};
+
+// ===== SISTEM ULASAN =====
+
+// Load reviews dari localStorage
+window.reviews = JSON.parse(localStorage.getItem('bc_reviews')) || [];
+
+// Render Reviews di Homepage
+window.renderReviews = function(){
+  const revGrid = document.getElementById('revGrid');
+  if(!revGrid) return;
+  
+  if(window.reviews.length === 0){
+    revGrid.innerHTML = '<p class="empty" style="text-align:center;padding:30px;color:#888">Belum ada ulasan. Jadi第一批 pelanggan!</p>';
+    return;
+  }
+  
+  // Urutkan newest first, max 6显示
+  const sorted = window.reviews.sort((a,b) => b.timestamp - a.timestamp).slice(0,6);
+  
+  revGrid.innerHTML = sorted.map(r => {
+    const date = new Date(r.timestamp).toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+    return `
+      <div class="review-card">
+        <div class="review-header">
+          <span class="review-name">${r.nm}</span>
+          <span class="review-date">${date}</span>
+        </div>
+        <div class="review-stars">${'⭐'.repeat(r.rv)}</div>
+        <p class="review-text">${r.txt}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+// Buka Modal Ulasan
+window.openReview = function(){
+  document.getElementById('reviewModal').style.display = 'flex';
+  
+  // Kalau sudah login, autofill nama
+  if(window.currentUser){
+    document.getElementById('review_nm').value = window.currentUser.nama;
+  }
+}
+
+// Tutup Modal Ulasan
+window.closeReview = function(){
+  document.getElementById('reviewModal').style.display = 'none';
+}
+
+// Set Rating
+window.setRating = function(n){
+  document.getElementById('review_rating').value = n;
+  const btns = document.querySelectorAll('.star-btn');
+  btns.forEach((btn, i) => {
+    btn.style.opacity = i < n ? '1' : '0.3';
+    btn.style.transform = i < n ? 'scale(1.1)' : 'scale(1)';
+  });
+}
+
+// Submit Ulasan
+window.submitReview = function(){
+  const nm = document.getElementById('review_nm').value.trim();
+  const rv = parseInt(document.getElementById('review_rating').value);
+  const txt = document.getElementById('review_txt').value.trim();
+  
+  if(!nm || !rv || !txt){
+    alert('Mohon isi semua field!');
+    return;
+  }
+  
+  const newReview = {
+    id: 'REV-' + Date.now(),
+    nm: nm,
+    rv: rv,
+    txt: txt,
+    timestamp: Date.now()
+  };
+  
+  window.reviews.unshift(newReview);
+  localStorage.setItem('bc_reviews', JSON.stringify(window.reviews));
+  
+  // Render ulang & tutup modal
+  window.renderReviews();
+  window.closeReview();
+  alert('Terima kasih atas-ulasan Anda! 🙏');
+};
+
+// Jalankan render reviews saat load
+document.addEventListener('DOMContentLoaded', function() {
+  window.renderReviews();
+});
+
 
 </script>
 </body>
