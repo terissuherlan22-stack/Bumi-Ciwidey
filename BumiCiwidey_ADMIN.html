@@ -684,19 +684,83 @@ tr:hover td{background:#f9faf8}
   window.closePF = function(){document.getElementById('pfModal').classList.remove('open');pImgs=[]}
   
   window.handleProdImgs = function(inp){Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{pImgs.push(e.target.result);renderPImgPrev()};r.readAsDataURL(f)});inp.value=''}
-  window.renderPImgPrev = function(){document.getElementById('prodImgPrev').innerHTML=pImgs.map((s,i)=>`<div class="img-pw"><img src="${s}" alt="foto"><button class="img-rm" onclick="pImgs.splice(${i},1);renderPImgPrev();toast('Foto dihapus')">✕</button></div>`).join('')}
-
-  window.saveProd = function(){
-    const nm=document.getElementById('pf_nm').value.trim(),price=parseInt(document.getElementById('pf_price').value)||0;
-    if(!nm||!price){toast('⚠️ Nama & harga wajib!');return}
-    const disc=parseInt(document.getElementById('pf_disc').value)||null,stk=parseInt(document.getElementById('pf_stk').value)||0,unit=document.getElementById('pf_unit').value||'ikat',cat=document.getElementById('pf_cat').value,desc=document.getElementById('pf_desc').value.trim(),feat=document.getElementById('tog_feat').classList.contains('on'),act=document.getElementById('tog_act').classList.contains('on'),emoji=(DEF_EMOJI[cat]||['📦'])[0];
+ // ===== RENDER PREVIEW DENGAN URL =====
+window.renderPImgPrev = function() {
+  document.getElementById('prodImgPrev').innerHTML = pImgs.map((s, i) => `
+    <div class="img-pw">
+      <img src="${s.url}" alt="foto">
+      <button class="img-rm" onclick="rmProdImg(${i})">✕</button>
+    </div>
+  `).join('');
+}
+// ===== HAPUS FOTO (TERMASUK DARI IMGBB) =====
+window.rmProdImg = async function(idx) {
+  const foto = pImgs[idx];
+  
+  if(confirm('Hapus foto ini?')) {
+    // Hapus dari ImgBB
+    if(foto.delete_url) {
+      toast('🗑 Menghapus dari ImgBB...');
+      await deleteFromImgBB(foto.delete_url);
+    }
     
-    if(editId){const p=prods.find(x=>x.id===editId);Object.assign(p,{nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk diperbarui!')}
-    else{prods.push({id:Date.now(),nm,price,disc,stk,unit,cat,desc,feat,act,emoji,imgs:[...pImgs]});toast('✅ Produk ditambahkan!')}
-    
-    closePF();
-    saveToStorage();
+    // Hapus dari array
+    pImgs.splice(idx, 1);
+    renderPImgPrev();
+    toast('🗑 Foto dihapus');
   }
+}
+
+// Tambah fungsi CLEAR ALL FOTO
+window.clearAllProdImg = function(){
+  if(confirm('Hapus semua foto produk ini?')){
+    pImgs = [];
+    renderPImgPrev();
+    toast('🗑 Semua foto dihapus');
+  }
+}
+
+window.saveProd = function() {
+  const nm = document.getElementById('pf_nm').value.trim();
+  const price = parseInt(document.getElementById('pf_price').value) || 0;
+  
+  if(!nm || !price) {
+    toast('⚠️ Nama & harga wajib!');
+    return;
+  }
+  
+  const disc = parseInt(document.getElementById('pf_disc').value) || null;
+  const stk = parseInt(document.getElementById('pf_stk').value) || 0;
+  const unit = document.getElementById('pf_unit').value || 'ikat';
+  const cat = document.getElementById('pf_cat').value;
+  const desc = document.getElementById('pf_desc').value.trim();
+  const feat = document.getElementById('tog_feat').classList.contains('on');
+  const act = document.getElementById('tog_act').classList.contains('on');
+  const emoji = (DEF_EMOJI[cat] || ['📦'])[0];
+  
+  if(editId) {
+    const p = prods.find(x => x.id === editId);
+    
+    // Hapus foto lama dari ImgBB yang tidak ada di pImgs baru
+    if(p.imgs && p.imgs.length > 0) {
+      p.imgs.forEach(oldImg => {
+        const stillExist = pImgs.find(newImg => newImg.url === oldImg.url);
+        if(!stillExist && oldImg.delete_url) {
+          deleteFromImgBB(oldImg.delete_url);
+        }
+      });
+    }
+    
+    Object.assign(p, { nm, price, disc, stk, unit, cat, desc, feat, act, emoji, imgs: [...pImgs] });
+    toast('✅ Produk diperbarui!');
+  } else {
+    prods.push({ id: Date.now(), nm, price, disc, stk, unit, cat, desc, feat, act, emoji, imgs: [...pImgs] });
+    toast('✅ Produk ditambahkan!');
+  }
+  
+  closePF();
+  saveToStorage();
+}
 
   window.togSw = function(el){el.classList.toggle('on')}
   window.exportData = function(){toast('📥 Export berhasil!')}
@@ -715,6 +779,84 @@ tr:hover td{background:#f9faf8}
 
   // Jalankan inisialisasi awal saat halaman termuat
   saveToStorage();
+
+  // ===== FUNGSI UPLOAD GAMBAR KE IMGBB (GRATIS) =====
+const IMGBB_API_KEY = '1a27088dcf78e4a5df52342e8380f5f1';
+
+window.uploadToImgBB = async function(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result.split(',')[1];
+      
+      try {
+        const formData = new FormData();
+        formData.append('key', IMGBB_API_KEY);
+        formData.append('image', base64);
+        
+        const response = await fetch('https://api.imgbb.com/1/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if(data.success) {
+          resolve({
+            url: data.data.url,
+            delete_url: data.data.delete_url,
+            display_url: data.data.display_url
+          });
+        } else {
+          reject('Gagal upload: ' + data.error.message);
+        }
+      } catch(err) {
+        reject('Error: ' + err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===== FUNGSI HAPUS GAMBAR DARI IMGBB =====
+window.deleteFromImgBB = async function(deleteUrl) {
+  try {
+    await fetch(deleteUrl);
+    return true;
+  } catch(err) {
+    console.error('Gagal hapus:', err);
+    return false;
+  }
+}
+
+// ===== GANTI FUNGSI UPLOAD FOTO MENJADI PAKAI IMGBB =====
+window.handleProdImgs = async function(inp) {
+  const files = Array.from(inp.files);
+  
+  if(files.length === 0) return;
+  
+  toast('📤 Mengupload foto...');
+  
+  for(let file of files) {
+    try {
+      const result = await uploadToImgBB(file);
+      
+      // Simpan URL dan delete_url
+      pImgs.push({
+        url: result.url,
+        delete_url: result.delete_url
+      });
+      
+      toast('✅ Foto diupload: ' + file.name);
+    } catch(err) {
+      toast('❌ Gagal: ' + err);
+    }
+  }
+  
+  renderPImgPrev();
+  inp.value = '';
+}
+
 </script>
 </body>
 </html>
