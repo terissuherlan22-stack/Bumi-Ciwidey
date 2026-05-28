@@ -309,10 +309,9 @@ tr:hover td{background:#f9faf8}
 
   </div>
     <div class="hero-stats">
-      <div class="hero-stat"><div class="hsn">500+</div><div class="hsl">Pelanggan Puas</div></div>
-      <div class="hero-stat"><div class="hsn">50+</div><div class="hsl">Jenis Produk</div></div>
+      <div class="hero-stat"><div class="hsn">50+</div><div class="hsl">Pelanggan Puas</div></div>
+      <div class="hero-stat"><div class="hsn">10+</div><div class="hsl">Jenis Produk</div></div>
       <div class="hero-stat"><div class="hsn">3x</div><div class="hsl">Jadwal Kirim</div></div>
-      <div class="hero-stat"><div class="hsn">100%</div><div class="hsl">Organik</div></div>
     </div>
   </div>
 </section> 
@@ -525,6 +524,13 @@ tr:hover td{background:#f9faf8}
 </div>
 
 <script type="module">
+
+  var actCat = 'Semua';
+  var srchQ = '';
+    // Fungsi format angka
+  function fmt(n) {
+    return 'Rp ' + n.toLocaleString('id-ID');
+  }
   // 1. IMPORT FIREBASE SDK (Versi 10 Modular)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -612,7 +618,7 @@ function saveLocalStorage() {
 }
 
   // --- FUNGSI GLOBAL UNTUK RENDER UI ---
-  window.renderCats = function(){const all=['Semua',...window.cats]; document.getElementById('catBar').innerHTML=all.map(c=>`<button class="cat-btn ${c===actCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('')}
+  window.renderCats = function(){const all=['Semua',...window.cats]; document.getElementById('catBar').innerHTML=all.map(c=>`<button class="cat-btn" onclick="setCat('${c}')">${c}</button>`).join('')}
   
   window.renderProds = function(){
     let ps = window.prods.filter(p => p.act);
