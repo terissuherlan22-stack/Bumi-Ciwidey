@@ -133,8 +133,8 @@ tr:hover td{background:#f9faf8}
 .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px}
 .prod-card{background:white;border-radius:var(--r);overflow:hidden;border:1.5px solid var(--gr100);transition:transform .2s,box-shadow .2s;cursor:pointer}
 .prod-card:hover{transform:translateY(-4px);box-shadow:var(--shL)}
-.prod-img-wrap{height:190px;background:var(--g50);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:58px}
-.prod-img-wrap img.pp{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.prod-img-wrap{height:190px;background:var(--g50);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:50px}
+.prod-img-wrap img.pp{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
 .prod-badge{position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:50px;font-size:11px;font-weight:700;z-index:2}
 .badge-feat{background:var(--g600);color:white}
 .badge-oos{background:var(--gr500);color:white}
@@ -620,29 +620,53 @@ function saveLocalStorage() {
   // --- FUNGSI GLOBAL UNTUK RENDER UI ---
   window.renderCats = function(){const all=['Semua',...window.cats]; document.getElementById('catBar').innerHTML=all.map(c=>`<button class="cat-btn" onclick="setCat('${c}')">${c}</button>`).join('')}
   
-  window.renderProds = function(){
-    let ps = window.prods.filter(p => p.act);
-    if(actCat!=='Semua') ps = ps.filter(p=>p.cat===actCat);
-    if(srchQ) ps = ps.filter(p=>p.nm.toLowerCase().includes(srchQ));
-    // Sorting logic (sama seperti sebelumnya)
+// ===== RENDER PRODUK (YANG SUDAH FIX) =====
+window.renderProds = function(){
+  // AMAN: cek dulu sebelum render
+  if(!window.prods || !Array.isArray(window.prods)){
+    console.log("⚠️ Products belum ada, sedang load...");
+    window.prods = JSON.parse(localStorage.getItem('bc_prods')) || defaultData.prods;
+    window.cats = JSON.parse(localStorage.getItem('bc_cats')) || defaultData.cats;
+  }
+  
+  let ps = window.prods.filter(p => p.act);
+  if(actCat!=='Semua') ps = ps.filter(p=>p.cat===actCat);
+  if(srchQ) ps = ps.filter(p=>p.nm.toLowerCase().includes(srchQ));
+  
+  const g = document.getElementById('prodGrid');
+  if(!g) return;
+  
+  document.getElementById('prodCount').textContent = ps.length+' produk';
+  if(!ps.length){g.innerHTML='<p class="empty">Produk Kosong</p>';return}
+  
+  // === FIX: Support format object dan string ===
+  g.innerHTML = ps.map(p => {
+    // Ambil URL foto dari object atau string
+    let imgHtml = '';
+    if(p.imgs && p.imgs.length > 0) {
+      const img = p.imgs[0];
+      const imgUrl = (typeof img === 'string') ? img : (img.url || null);
+      imgHtml = `<img class="pp" src="${imgUrl}">`;
+    } else {
+      imgHtml = `<span>${p.emoji}</span>`;
+    }
     
-    const g = document.getElementById('prodGrid');
-    document.getElementById('prodCount').textContent = ps.length+' produk';
-    if(!ps.length){g.innerHTML='<p class="empty">Produk Kosong</p>';return}
-    
-    g.innerHTML = ps.map(p => `
+    return `
       <div class="prod-card" onclick="openPD(${p.id})">
-        <div class="prod-img-wrap">${p.imgs?`<img class="pp" src="${p.imgs[0]}">`:`<span>${p.emoji}</span>`}</div>
+        <div class="prod-img-wrap">${imgHtml}</div>
         <div class="prod-info">
           <div class="prod-nm">${p.nm}</div>
           <div class="prod-bot">
-            <span class="price-main">${fmt(p.price)}</span>
+            <span class="price-main">${fmt(p.disc || p.price)}</span>
             <button class="add-btn" onclick="event.stopPropagation();addCart(${p.id})">+</button>
           </div>
         </div>
       </div>
-    `).join('');
-  }
+    `;
+  }).join('');
+  
+  console.log("✅ Products render:", ps.length);
+}
 
   // ... (Sisa fungsi addCart, renderCart, submitOrder sama seperti sebelumnya) ...
   // Saya asumsikan kode lengkap Anda sudah benar, bagian ini saya singkatkan.
@@ -1208,7 +1232,7 @@ window.renderProds = function(){
   
   g.innerHTML = ps.map(p => `
     <div class="prod-card" onclick="openPD(${p.id})">
-      <div class="prod-img-wrap"><span>${p.emoji}</span></div>
+    <div class="prod-img-wrap">${p.imgs && p.imgs[0] ? `<img src="${typeof p.imgs[0] === 'string' ? p.imgs[0] : p.imgs[0].url}">` : `<span>${p.emoji}</span>`}</div>
       <div class="prod-info">
         <div class="prod-nm">${p.nm}</div>
         <div class="prod-bot">

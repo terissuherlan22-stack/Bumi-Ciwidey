@@ -579,14 +579,21 @@ tr:hover td{background:#f9faf8}
     }
   }
 
-  // ===== 8. MANAJEMEN KATALOG PRODUK =====
-  window.renderProdTbl = function(){
-    document.getElementById('prodTbl').innerHTML=prods.map(p=>{
-      const src=p.imgs&&p.imgs[0];
-      const th=src?`<img src="${src}" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:2px solid var(--g100)">`:`<div style="width:46px;height:46px;background:var(--g50);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">${p.emoji}</div>`;
-      return `<tr><td>${th}</td><td><strong>${p.nm}</strong>${p.feat?'<span style="margin-left:6px;background:var(--amberL);color:#a07010;font-size:11px;padding:2px 8px;border-radius:50px;font-weight:700">🔥 Unggulan</span>':''}</td><td>${p.cat}</td><td>${p.disc?`<small style="text-decoration:line-through;color:var(--gr400)">${fmt(p.price)}</small><br><strong style="color:var(--g600)">${fmt(p.disc)}</strong>`:fmt(p.price)}</td><td><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk}</span> ${p.unit}</td><td><span class="bs ${p.stk===0?'bs-batal':p.act?'bs-kirim':'bs-tunggu'}">${p.stk===0?'Habis':p.act?'Aktif':'Nonaktif'}</span></td><td><div class="act-row"><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button><button class="btn-d" onclick="delProd(${p.id})">🗑</button></div></td></tr>`;
-    }).join('');
-  }
+// ===== 8. MANAJEMEN KATALOG PRODUK (FIX) =====
+window.renderProdTbl = function(){
+  document.getElementById('prodTbl').innerHTML=prods.map(p=>{
+    // === FIX: Ambil URL dari object ===
+    let src = null;
+    if(p.imgs && p.imgs.length > 0) {
+      const img = p.imgs[0];
+      src = (typeof img === 'string') ? img : (img.url || null);
+    }
+    // =================================
+    
+    const th = src ? `<img src="${src}" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:2px solid var(--g100)">` : `<div style="width:46px;height:46px;background:var(--g50);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">${p.emoji}</div>`;
+    return `<tr><td>${th}</td><td><strong>${p.nm}</strong>${p.feat?'<span style="margin-left:6px;background:var(--amberL);color:#a07010;font-size:11px;padding:2px 8px;border-radius:50px;font-weight:700">🔥 Unggulan</span>':''}</td><td>${p.cat}</td><td>${p.disc?`<small style="text-decoration:line-through;color:var(--gr400)">${fmt(p.price)}</small><br><strong style="color:var(--g600)">${fmt(p.disc)}</strong>`:fmt(p.price)}</td><td><span style="font-weight:700;color:${p.stk===0?'var(--red)':p.stk<10?'var(--amber)':'var(--g600)'}">${p.stk}</span> ${p.unit}</td><td><span class="bs ${p.stk===0?'bs-batal':p.act?'bs-kirim':'bs-tunggu'}">${p.stk===0?'Habis':p.act?'Aktif':'Nonaktif'}</span></td><td><div class="act-row"><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button><button class="btn-d" onclick="delProd(${p.id})">🗑</button></div></td></tr>`;
+  }).join('');
+}
   window.searchAdmProd = function(q){const f=prods.filter(p=>p.nm.toLowerCase().includes(q.toLowerCase()));document.getElementById('prodTbl').innerHTML=f.map(p=>`<tr><td style="font-size:22px">${p.emoji}</td><td>${p.nm}</td><td>${p.cat}</td><td>${fmt(p.disc||p.price)}</td><td>${p.stk} ${p.unit}</td><td><span class="bs ${p.act?'bs-kirim':'bs-tunggu'}">${p.act?'Aktif':'Nonaktif'}</span></td><td><button class="btn-ic" onclick="openPF(${p.id})">✏️ Edit</button></td></tr>`).join('')}
   window.delProd = function(id){
     if(confirm('Hapus produk ini?')){
@@ -673,25 +680,80 @@ tr:hover td{background:#f9faf8}
   window.delAdmin = function(id){adminUsers=adminUsers.filter(u=>u.id!==id);renderAdminTbl();toast('🗑 Admin dihapus')}
 
   // ===== 16. LOGIKA FORM INPUT PRODUK (MODAL) =====
-  window.openPF = function(id){
-    editId=id;pImgs=[];
-    document.getElementById('pfTitle').textContent=id?'✏️ Edit Produk':'➕ Tambah Produk Baru';
-    const cs=document.getElementById('pf_cat');cs.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-    if(id){const p=prods.find(x=>x.id===id);document.getElementById('pf_nm').value=p.nm;document.getElementById('pf_price').value=p.price;document.getElementById('pf_disc').value=p.disc||'';document.getElementById('pf_stk').value=p.stk;document.getElementById('pf_unit').value=p.unit;document.getElementById('pf_desc').value=p.desc||'';cs.value=p.cat;p.feat?document.getElementById('tog_feat').classList.add('on'):document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle'+(p.act?' on':'');pImgs=p.imgs?[...p.imgs]:[];}
-    else{['pf_nm','pf_disc','pf_desc'].forEach(i=>document.getElementById(i).value='');document.getElementById('pf_price').value='';document.getElementById('pf_stk').value='';document.getElementById('pf_unit').value='ikat';document.getElementById('tog_feat').classList.remove('on');document.getElementById('tog_act').className='toggle on';}
-    renderPImgPrev();document.getElementById('pfModal').classList.add('open');
+// ===== PASTIKAN DI openPF =====
+window.openPF = function(id) {
+  editId = id;
+  pImgs = []; 
+  
+  document.getElementById('pfTitle').textContent = id ? '✏️ Edit Produk' : '➕ Tambah Produk Baru';
+  
+  const cs = document.getElementById('pf_cat');
+  cs.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  
+  if(id){
+    const p = prods.find(x => x.id === id);
+    document.getElementById('pf_nm').value = p.nm;
+    document.getElementById('pf_price').value = p.price;  // ✓ Sudah benar
+    document.getElementById('pf_disc').value = p.disc || '';
+    document.getElementById('pf_stk').value = p.stk;
+    document.getElementById('pf_unit').value = p.unit;
+    document.getElementById('pf_desc').value = p.desc || '';
+    cs.value = p.cat;
+    
+    // Load foto dari Firebase
+    pImgs = [];
+    if(p.imgs && p.imgs.length > 0) {
+      p.imgs.forEach(function(img){
+        pImgs.push({
+          url: img.url,
+          delete_url: img.delete_url || ''
+        });
+      });
+    }
+    console.log('Foto dimuat:', pImgs);
+    
+    if(p.feat) document.getElementById('tog_feat').classList.add('on');
+    document.getElementById('tog_act').className = 'toggle' + (p.act ? ' on' : '');
+  } else {
+    ['pf_nm', 'pf_disc', 'pf_desc'].forEach(function(i) { 
+      document.getElementById(i).value = ''; 
+    });
+    document.getElementById('pf_price').value = '';
+    document.getElementById('pf_stk').value = '';
+    document.getElementById('pf_unit').value = 'ikat';
+    document.getElementById('tog_feat').classList.remove('on');
+    document.getElementById('tog_act').className = 'toggle on';
   }
+  
+  renderPImgPrev();
+  document.getElementById('pfModal').classList.add('open');
+}
   window.closePF = function(){document.getElementById('pfModal').classList.remove('open');pImgs=[]}
   
   window.handleProdImgs = function(inp){Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{pImgs.push(e.target.result);renderPImgPrev()};r.readAsDataURL(f)});inp.value=''}
  // ===== RENDER PREVIEW DENGAN URL =====
+// ===== RENDER PREVIEW DENGAN URL (YANG BENAR) =====
 window.renderPImgPrev = function() {
-  document.getElementById('prodImgPrev').innerHTML = pImgs.map((s, i) => `
-    <div class="img-pw">
-      <img src="${s.url}" alt="foto">
+  const container = document.getElementById('prodImgPrev');
+
+  // Debug: tampilkan pImgs di console
+  console.log('pImgs sekarang:', pImgs);
+  
+  if(!pImgs || pImgs.length === 0) {
+    container.innerHTML = '<p style="color:#999;font-size:13px;">Belum ada foto</p>';
+    return;
+  }
+  
+  container.innerHTML = pImgs.map((s, i) => {
+    // Support format lama (string) dan baru (objek)
+    const imgUrl = typeof s === 'string' ? s : (s.url || s);
+    const deleteUrl = s.delete_url || '';
+    
+    return `<div class="img-pw">
+      <img src="${imgUrl}" alt="foto">
       <button class="img-rm" onclick="rmProdImg(${i})">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 // ===== HAPUS FOTO (TERMASUK DARI IMGBB) =====
 window.rmProdImg = async function(idx) {
